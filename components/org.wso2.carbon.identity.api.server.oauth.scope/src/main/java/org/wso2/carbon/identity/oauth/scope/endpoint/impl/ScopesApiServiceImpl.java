@@ -374,6 +374,7 @@ public class ScopesApiServiceImpl extends ScopesApiService {
         try {
             AuthorizationManager authorizationManager =
                     CarbonContext.getThreadLocalCarbonContext().getUserRealm().getAuthorizationManager();
+            // TODO Implement this with user id?
             return authorizationManager.isUserAuthorized(authenticatedUser,
                     CarbonConstants.UI_ADMIN_PERMISSION_COLLECTION, CarbonConstants.UI_PERMISSION_ACTION);
         } catch (UserStoreException e) {

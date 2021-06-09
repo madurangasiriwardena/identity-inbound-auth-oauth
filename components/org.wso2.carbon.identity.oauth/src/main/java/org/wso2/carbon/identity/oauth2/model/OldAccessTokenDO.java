@@ -28,7 +28,7 @@ public class OldAccessTokenDO extends AccessTokenDO {
 
     private int consumerKeyId;
 
-    private String authzUser;
+    private String authzUserId;
 
     private int tenantId;
 
@@ -56,8 +56,8 @@ public class OldAccessTokenDO extends AccessTokenDO {
         this.consumerKeyId = consumerKeyId;
     }
 
-    public void setAuthzUser(String authzUser) {
-        this.authzUser = authzUser;
+    public void setAuthzUserId(String authzUserId) {
+        this.authzUserId = authzUserId;
     }
 
     public void setTenantId(int tenantId) {
@@ -117,8 +117,8 @@ public class OldAccessTokenDO extends AccessTokenDO {
         return this.consumerKeyId;
     }
 
-    public String getAuthzUserValue() {
-        return authzUser;
+    public String getAuthzUserId() {
+        return authzUserId;
     }
 
     public int getTenantId() {

@@ -241,7 +241,7 @@ public class DeviceFlowDAOImpl implements DeviceFlowDAO {
             throws IdentityOAuth2Exception {
 
         if (log.isDebugEnabled()) {
-            log.debug("Setting authorize user: " + authenticatedUser.getUserName() + " and status: " + status + " for" +
+            log.debug("Setting authorize user: " + authenticatedUser.getUserId() + " and status: " + status + " for" +
                     " user_code: " + userCode);
         }
         try (Connection connection = IdentityDatabaseUtil.getDBConnection(true)) {
@@ -249,6 +249,7 @@ public class DeviceFlowDAOImpl implements DeviceFlowDAO {
                          connection.prepareStatement(SQLQueries.DeviceFlowDAOSQLQueries.SET_AUTHZ_USER_AND_STATUS)) {
                 String authenticatedIDP = OAuth2Util.getAuthenticatedIDP(authenticatedUser);
                 int tenantId = OAuth2Util.getTenantId(authenticatedUser.getTenantDomain());
+                // TODO handle device flow
                 prepStmt.setString(1, authenticatedUser.getUserName());
                 prepStmt.setString(2, status);
                 prepStmt.setInt(3, tenantId);

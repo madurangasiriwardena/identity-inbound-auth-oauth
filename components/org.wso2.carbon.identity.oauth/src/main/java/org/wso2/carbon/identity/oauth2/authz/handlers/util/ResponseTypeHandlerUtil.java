@@ -376,6 +376,7 @@ public class ResponseTypeHandlerUtil {
         Claim claimOfKey = new Claim();
         claimOfKey.setClaimUri(OAuth2Util.SUB);
         key.setRemoteClaim(claimOfKey);
+        //TODO what to do here?
         String sub = authorizeReqDTO.getUser().getUserName();
 
         AccessTokenDO accessTokenDO = getAccessTokenDO(accessToken, msgCtx);

@@ -83,7 +83,7 @@ public class OldTokensCleanDAO {
             oldAccessTokenObject.setAccessToken(resultSet.getString(2));
             oldAccessTokenObject.setRefreshToken(resultSet.getString(3));
             oldAccessTokenObject.setConsumerKeyId(resultSet.getInt(4));
-            oldAccessTokenObject.setAuthzUser(resultSet.getString(5));
+            oldAccessTokenObject.setAuthzUserId(resultSet.getString(5));
             oldAccessTokenObject.setTenantId(resultSet.getInt(6));
             oldAccessTokenObject.setUserDomain(resultSet.getString(7));
             oldAccessTokenObject.setUserType(resultSet.getString(8));
@@ -122,7 +122,7 @@ public class OldTokensCleanDAO {
         insertintoaudittable.setString(2, oldAccessTokenDAO.getAccessToken());
         insertintoaudittable.setString(3, oldAccessTokenDAO.getRefreshToken());
         insertintoaudittable.setInt(4, oldAccessTokenDAO.getConsumerKeyId());
-        insertintoaudittable.setString(5, oldAccessTokenDAO.getAuthzUserValue());
+        insertintoaudittable.setString(5, oldAccessTokenDAO.getAuthzUserId());
         insertintoaudittable.setInt(6, oldAccessTokenDAO.getTenantId());
         insertintoaudittable.setString(7, oldAccessTokenDAO.getUserDomain());
         insertintoaudittable.setString(8, oldAccessTokenDAO.getUserType());

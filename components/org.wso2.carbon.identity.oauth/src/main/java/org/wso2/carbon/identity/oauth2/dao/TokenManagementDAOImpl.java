@@ -159,7 +159,7 @@ public class TokenManagementDAOImpl extends AbstractOAuthDAO implements TokenMan
                     } else {
                         validationDataDO.setAccessToken(resultSet.getString(1));
                     }
-                    String userName = resultSet.getString(2);
+                    String authzUserId = resultSet.getString(2);
                     int tenantId = resultSet.getInt(3);
                     String userDomain = resultSet.getString(4);
                     String tenantDomain = OAuth2Util.getTenantDomain(tenantId);
@@ -177,8 +177,8 @@ public class TokenManagementDAOImpl extends AbstractOAuthDAO implements TokenMan
                     if (OAuth2ServiceComponentHolder.isIDPIdColumnEnabled()) {
                         authenticatedIDP = resultSet.getString(13);
                     }
-                    AuthenticatedUser user = OAuth2Util.createAuthenticatedUser(userName, userDomain, tenantDomain,
-                            authenticatedIDP);
+                    AuthenticatedUser user = OAuth2Util.createAuthenticatedUserWithId(authzUserId, userDomain,
+                            tenantDomain, authenticatedIDP);
                     user.setAuthenticatedSubjectIdentifier(subjectIdentifier);
                     validationDataDO.setAuthorizedUser(user);
 
@@ -191,7 +191,7 @@ public class TokenManagementDAOImpl extends AbstractOAuthDAO implements TokenMan
 
             if (scopes.size() > 0 && validationDataDO != null) {
                 validationDataDO.setScope((String[]) ArrayUtils.addAll(validationDataDO.getScope(),
-                        scopes.toArray(new String[scopes.size()])));
+                        scopes.toArray(new String[0])));
             }
 
         } catch (SQLException e) {
@@ -235,7 +235,7 @@ public class TokenManagementDAOImpl extends AbstractOAuthDAO implements TokenMan
             while (resultSet.next()) {
                 if (iterateId == 0) {
                     String consumerKey = getPersistenceProcessor().getPreprocessedClientId(resultSet.getString(1));
-                    String authorizedUser = resultSet.getString(2);
+                    String authorizedUserId = resultSet.getString(2);
                     int tenantId = resultSet.getInt(3);
                     String tenantDomain = OAuth2Util.getTenantDomain(tenantId);
                     String userDomain = resultSet.getString(4);
@@ -256,7 +256,7 @@ public class TokenManagementDAOImpl extends AbstractOAuthDAO implements TokenMan
                         authenticatedIDP = resultSet.getString(15);
                     }
 
-                    AuthenticatedUser user = OAuth2Util.createAuthenticatedUser(authorizedUser, userDomain,
+                    AuthenticatedUser user = OAuth2Util.createAuthenticatedUserWithId(authorizedUserId, userDomain,
                             tenantDomain, authenticatedIDP);
 
                     ServiceProvider serviceProvider;
@@ -284,7 +284,7 @@ public class TokenManagementDAOImpl extends AbstractOAuthDAO implements TokenMan
             }
             if (scopes.size() > 0 && validationDataDO != null) {
                 validationDataDO.setScope((String[]) ArrayUtils.addAll(validationDataDO.getScope(),
-                        scopes.toArray(new String[scopes.size()])));
+                        scopes.toArray(new String[0])));
             }
         } catch (SQLException e) {
             throw new IdentityOAuth2Exception("Error while retrieving Refresh Token", e);
@@ -677,7 +677,7 @@ public class TokenManagementDAOImpl extends AbstractOAuthDAO implements TokenMan
         Set<String> distinctConsumerKeys = new HashSet<>();
         boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authzUser.toString());
         String tenantDomain = authzUser.getTenantDomain();
-        String tenantAwareUsernameWithNoUserDomain = authzUser.getUserName();
+        String authzUserId = authzUser.getUserId();
         String userDomain = OAuth2Util.getSanitizedUserStoreDomain(authzUser.getUserStoreDomain());
 
         try {
@@ -686,15 +686,8 @@ public class TokenManagementDAOImpl extends AbstractOAuthDAO implements TokenMan
             String sqlQuery = OAuth2Util.getTokenPartitionedSqlByUserId(SQLQueries.
                     GET_DISTINCT_APPS_AUTHORIZED_BY_USER_ALL_TIME, authzUser.toString());
 
-            if (!isUsernameCaseSensitive) {
-                sqlQuery = sqlQuery.replace(AUTHZ_USER, LOWER_AUTHZ_USER);
-            }
             ps = connection.prepareStatement(sqlQuery);
-            if (isUsernameCaseSensitive) {
-                ps.setString(1, tenantAwareUsernameWithNoUserDomain);
-            } else {
-                ps.setString(1, tenantAwareUsernameWithNoUserDomain.toLowerCase());
-            }
+            ps.setString(1, authzUserId);
             ps.setInt(2, tenantId);
             ps.setString(3, userDomain);
             rs = ps.executeQuery();

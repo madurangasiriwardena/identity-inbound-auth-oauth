@@ -58,6 +58,7 @@ import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.openidconnect.CustomClaimsCallbackHandler;
 import org.wso2.carbon.user.core.UserStoreException;
 import org.wso2.carbon.user.core.UserStoreManager;
+import org.wso2.carbon.user.core.common.AbstractUserStoreManager;
 import org.wso2.carbon.user.core.util.UserCoreUtil;
 
 import java.security.Key;
@@ -620,6 +621,7 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
                                                AuthenticatedUser authorizedUser) throws IdentityOAuth2Exception {
 
         String subject;
+        //TODO do something
         String username = authorizedUser.getUserName();
         String userStoreDomain = authorizedUser.getUserStoreDomain();
         String userTenantDomain = authorizedUser.getTenantDomain();
@@ -713,13 +715,12 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
     private String getSubjectClaimFromUserStore(String subjectClaimUri, AuthenticatedUser authenticatedUser)
             throws UserStoreException, IdentityException {
 
-        UserStoreManager userStoreManager = IdentityTenantUtil
+        AbstractUserStoreManager userStoreManager = (AbstractUserStoreManager) IdentityTenantUtil
                 .getRealm(authenticatedUser.getTenantDomain(), authenticatedUser.toFullQualifiedUsername())
                 .getUserStoreManager();
 
         return userStoreManager
-                .getSecondaryUserStoreManager(authenticatedUser.getUserStoreDomain())
-                .getUserClaimValue(authenticatedUser.getUserName(), subjectClaimUri, null);
+                .getUserClaimValueWithID(authenticatedUser.getUserId(), subjectClaimUri, null);
     }
 
     /**

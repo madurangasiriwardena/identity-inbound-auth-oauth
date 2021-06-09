@@ -98,7 +98,7 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
             prepStmt.setString(2, getPersistenceProcessor().getProcessedAuthzCode(authzCode));
             prepStmt.setString(3, callbackUrl);
             prepStmt.setString(4, "");
-            prepStmt.setString(5, authzCodeDO.getAuthorizedUser().getUserName());
+            prepStmt.setString(5, authzCodeDO.getAuthorizedUser().getUserId());
             prepStmt.setString(6, userDomain);
             int tenantId = OAuth2Util.getTenantId(authzCodeDO.getAuthorizedUser().getTenantDomain());
             prepStmt.setInt(7, tenantId);
@@ -196,21 +196,6 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
         ResultSet resultSet = null;
         AuthorizationCodeValidationResult result = null;
         try {
-            AuthenticatedUser user = null;
-            String codeState = null;
-            String authorizedUser = null;
-            String userstoreDomain = null;
-            String scopeString = null;
-            String callbackUrl = null;
-            String tenantDomain = null;
-            String codeId = null;
-            String subjectIdentifier = null;
-            String pkceCodeChallenge = null;
-            String pkceCodeChallengeMethod = null;
-
-            Timestamp issuedTime = null;
-            long validityPeriod = 0;
-            int tenantId;
 
             String sql;
             if (OAuth2ServiceComponentHolder.isIDPIdColumnEnabled()) {
@@ -225,25 +210,26 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
             resultSet = prepStmt.executeQuery();
 
             if (resultSet.next()) {
-                codeState = resultSet.getString(8);
-                authorizedUser = resultSet.getString(1);
-                userstoreDomain = resultSet.getString(2);
-                tenantId = resultSet.getInt(3);
-                tenantDomain = OAuth2Util.getTenantDomain(tenantId);
-                scopeString = resultSet.getString(4);
-                callbackUrl = resultSet.getString(5);
-                issuedTime = resultSet.getTimestamp(6, Calendar.getInstance(TimeZone.getTimeZone(UTC)));
-                validityPeriod = resultSet.getLong(7);
-                codeId = resultSet.getString(11);
-                subjectIdentifier = resultSet.getString(12);
-                pkceCodeChallenge = resultSet.getString(13);
-                pkceCodeChallengeMethod = resultSet.getString(14);
+                String authorizedUserId = resultSet.getString(1);
+                String userstoreDomain = resultSet.getString(2);
+                int tenantId = resultSet.getInt(3);
+                String tenantDomain = OAuth2Util.getTenantDomain(tenantId);
+                String scopeString = resultSet.getString(4);
+                String callbackUrl = resultSet.getString(5);
+                Timestamp issuedTime
+                        = resultSet.getTimestamp(6, Calendar.getInstance(TimeZone.getTimeZone(UTC)));
+                long validityPeriod = resultSet.getLong(7);
+                String codeState = resultSet.getString(8);
+                String codeId = resultSet.getString(11);
+                String subjectIdentifier = resultSet.getString(12);
+                String pkceCodeChallenge = resultSet.getString(13);
+                String pkceCodeChallengeMethod = resultSet.getString(14);
                 String authenticatedIDP = null;
                 if (OAuth2ServiceComponentHolder.isIDPIdColumnEnabled()) {
                     authenticatedIDP = resultSet.getString(15);
                 }
-                user = OAuth2Util.createAuthenticatedUser(authorizedUser, userstoreDomain, tenantDomain,
-                        authenticatedIDP);
+                AuthenticatedUser user = OAuth2Util.createAuthenticatedUserWithId(authorizedUserId, userstoreDomain,
+                        tenantDomain, authenticatedIDP);
                 ServiceProvider serviceProvider;
                 try {
                     serviceProvider = OAuth2ServiceComponentHolder.getApplicationMgtService().
@@ -379,25 +365,18 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
             IdentityOAuth2Exception {
 
         if (log.isDebugEnabled()) {
-            log.debug("Retrieving authorization codes of user: " + authenticatedUser.toString());
+            log.debug("Retrieving authorization codes of user: " + authenticatedUser.getUserId());
         }
 
         Connection connection = IdentityDatabaseUtil.getDBConnection(false);
         PreparedStatement ps = null;
         ResultSet rs = null;
         Set<String> authorizationCodes = new HashSet<>();
-        boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authenticatedUser.toString());
         try {
             String sqlQuery = SQLQueries.GET_AUTHORIZATION_CODES_BY_AUTHZUSER;
-            if (!isUsernameCaseSensitive) {
-                sqlQuery = sqlQuery.replace(AUTHZ_USER, LOWER_AUTHZ_USER);
-            }
+
             ps = connection.prepareStatement(sqlQuery);
-            if (isUsernameCaseSensitive) {
-                ps.setString(1, authenticatedUser.getUserName());
-            } else {
-                ps.setString(1, authenticatedUser.getUserName().toLowerCase());
-            }
+            ps.setString(1, authenticatedUser.getUserId());
             ps.setInt(2, OAuth2Util.getTenantId(authenticatedUser.getTenantDomain()));
             ps.setString(3, authenticatedUser.getUserStoreDomain());
             ps.setString(4, OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE);
@@ -418,10 +397,10 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
         } catch (SQLException e) {
             IdentityDatabaseUtil.rollbackTransaction(connection);
             throw new IdentityOAuth2Exception("Error occurred while revoking Access Token with user Name : " +
-                    authenticatedUser.getUserName() + " tenant ID : " + OAuth2Util.getTenantId(authenticatedUser
+                    authenticatedUser.getUserId() + " tenant ID : " + OAuth2Util.getTenantId(authenticatedUser
                     .getTenantDomain()), e);
         } finally {
-            IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
+            IdentityDatabaseUtil.closeAllConnections(connection, rs, ps);
         }
         return authorizationCodes;
     }
@@ -445,21 +424,15 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
         PreparedStatement ps = null;
         ResultSet rs = null;
         List<AuthzCodeDO> authorizationCodes = new ArrayList<>();
-        String authzUser = authenticatedUser.getUserName();
+        String authzUserId = authenticatedUser.getUserId();
         String tenantDomain = authenticatedUser.getTenantDomain();
         String userStoreDomain = authenticatedUser.getUserStoreDomain();
-        boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authenticatedUser.toString());
         try {
+            //TODO update the query to have idp name.
             String sqlQuery = SQLQueries.GET_OPEN_ID_AUTHORIZATION_CODE_DATA_BY_AUTHZUSER;
-            if (!isUsernameCaseSensitive) {
-                sqlQuery = sqlQuery.replace(AUTHZ_USER, LOWER_AUTHZ_USER);
-            }
+
             ps = connection.prepareStatement(sqlQuery);
-            if (isUsernameCaseSensitive) {
-                ps.setString(1, authzUser);
-            } else {
-                ps.setString(1, authzUser.toLowerCase());
-            }
+            ps.setString(1, authzUserId);
             ps.setInt(2, OAuth2Util.getTenantId(tenantDomain));
             ps.setString(3, userStoreDomain);
             ps.setString(4, OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE);
@@ -475,10 +448,8 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
                 String callbackUrl = rs.getString(6);
                 String consumerKey = rs.getString(7);
 
-                AuthenticatedUser user = OAuth2Util.createAuthenticatedUser(authzUser, userStoreDomain, tenantDomain);
-                user.setUserName(authzUser);
-                user.setUserStoreDomain(userStoreDomain);
-                user.setTenantDomain(tenantDomain);
+                AuthenticatedUser user = OAuth2Util.createAuthenticatedUserWithId(authzUserId, userStoreDomain,
+                        tenantDomain, null);
 
                 //Authorization codes returned by this method will be used to clear claims cached against them.
                 // We will only return authz codes that would contain such cached clams in order to improve performance.
@@ -498,10 +469,10 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
         } catch (SQLException e) {
             IdentityDatabaseUtil.rollbackTransaction(connection);
             throw new IdentityOAuth2Exception("Error occurred while revoking authorization code with username : " +
-                    authenticatedUser.getUserName() + " tenant ID : " + OAuth2Util.getTenantId(authenticatedUser
+                    authenticatedUser.getUserId() + " tenant ID : " + OAuth2Util.getTenantId(authenticatedUser
                     .getTenantDomain()), e);
         } finally {
-            IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
+            IdentityDatabaseUtil.closeAllConnections(connection, rs, ps);
         }
         return authorizationCodes;
     }
@@ -595,7 +566,7 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
                 String authzCodeId = rs.getString(1);
                 String authzCode = rs.getString(2);
                 String consumerKey = rs.getString(3);
-                String authzUser = rs.getString(4);
+                String authzUserId = rs.getString(4);
                 String[] scope = OAuth2Util.buildScopeArray(rs.getString(5));
                 Timestamp issuedTime = rs.getTimestamp(6, Calendar.getInstance(TimeZone.getTimeZone(UTC)));
                 long validityPeriodInMillis = rs.getLong(7);
@@ -606,11 +577,8 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
                     authenticatedIDP = rs.getString(10);
                 }
 
-                AuthenticatedUser user = OAuth2Util.createAuthenticatedUser(authzUser, userStoreDomain, OAuth2Util
-                        .getTenantDomain(tenantId), authenticatedIDP);
-                user.setUserName(authzUser);
-                user.setUserStoreDomain(userStoreDomain);
-                user.setTenantDomain(OAuth2Util.getTenantDomain(tenantId));
+                AuthenticatedUser user = OAuth2Util.createAuthenticatedUserWithId(authzUserId, userStoreDomain,
+                        OAuth2Util.getTenantDomain(tenantId), authenticatedIDP);
 
                 // If the scope value is empty. It could have stored in the IDN_OAUTH2_AUTHZ_CODE_SCOPE table
                 // for on demand scope migration.
@@ -664,7 +632,7 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
                 String authzCodeId = rs.getString(1);
                 String authzCode = rs.getString(2);
                 String consumerKey = rs.getString(3);
-                String authzUser = rs.getString(4);
+                String authzUserId = rs.getString(4);
                 String[] scope = OAuth2Util.buildScopeArray(rs.getString(5));
                 Timestamp issuedTime = rs.getTimestamp(6, Calendar.getInstance(TimeZone.getTimeZone(UTC)));
                 long validityPeriodInMillis = rs.getLong(7);
@@ -674,7 +642,7 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
                     authenticatedIDP = rs.getString(9);
                 }
 
-                AuthenticatedUser user = OAuth2Util.createAuthenticatedUser(authzUser, userStoreDomain, OAuth2Util
+                AuthenticatedUser user = OAuth2Util.createAuthenticatedUserWithId(authzUserId, userStoreDomain, OAuth2Util
                         .getTenantDomain(tenantId), authenticatedIDP);
 
                 // If the scope value is empty. It could have stored in the IDN_OAUTH2_AUTHZ_CODE_SCOPE table

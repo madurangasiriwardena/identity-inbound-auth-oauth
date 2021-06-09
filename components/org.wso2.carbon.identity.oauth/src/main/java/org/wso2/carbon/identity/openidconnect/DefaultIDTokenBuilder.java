@@ -918,7 +918,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             if (log.isDebugEnabled()) {
                 log.debug("Setting authorized user tenant domain : " + tenantDomain + " and userstore domain : " +
                         userstoreDomain + " to the 'realm' claim of id_token for the user : " + authorizedUser
-                        .getUserName());
+                        .getUserId());
             }
             jwtClaimsSetBuilder.claim(OAuthConstants.OIDCClaims.REALM, realm);
         }

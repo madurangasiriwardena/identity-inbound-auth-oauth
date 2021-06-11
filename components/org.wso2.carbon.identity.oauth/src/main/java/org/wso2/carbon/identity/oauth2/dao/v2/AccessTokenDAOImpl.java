@@ -18,7 +18,7 @@
  * /
  */
 
-package org.wso2.carbon.identity.oauth2.dao;
+package org.wso2.carbon.identity.oauth2.dao.v2;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang.ArrayUtils;
@@ -39,6 +39,9 @@ import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
+import org.wso2.carbon.identity.oauth2.dao.AbstractOAuthDAO;
+import org.wso2.carbon.identity.oauth2.dao.AccessTokenDAO;
+import org.wso2.carbon.identity.oauth2.dao.OldTokensCleanDAO;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
@@ -71,9 +74,9 @@ import static org.apache.commons.lang.StringUtils.isNotBlank;
 import static org.wso2.carbon.identity.core.util.IdentityUtil.getProperty;
 import static org.wso2.carbon.identity.core.util.LambdaExceptionUtils.rethrowRowMapper;
 import static org.wso2.carbon.identity.oauth.common.OAuthConstants.TokenBindings.NONE;
-import static org.wso2.carbon.identity.oauth2.dao.SQLQueries.GET_ACCESS_TOKENS_BY_BINDING_REFERENCE;
-import static org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_TOKEN_BINDING_BY_TOKEN_ID;
-import static org.wso2.carbon.identity.oauth2.dao.SQLQueries.STORE_TOKEN_BINDING;
+import static org.wso2.carbon.identity.oauth2.dao.v2.SQLQueries.GET_ACCESS_TOKENS_BY_BINDING_REFERENCE;
+import static org.wso2.carbon.identity.oauth2.dao.v2.SQLQueries.RETRIEVE_TOKEN_BINDING_BY_TOKEN_ID;
+import static org.wso2.carbon.identity.oauth2.dao.v2.SQLQueries.STORE_TOKEN_BINDING;
 
 /**
  * Access token related data access object implementation.
@@ -191,7 +194,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                 insertTokenPrepStmt.setString(2, accessTokenDO.getRefreshToken());
             }
 
-            insertTokenPrepStmt.setString(3, accessTokenDO.getAuthzUser().getUserName());
+            insertTokenPrepStmt.setString(3, accessTokenDO.getAuthzUser().getUserId());
             int tenantId = OAuth2Util.getTenantId(accessTokenDO.getAuthzUser().getTenantDomain());
             insertTokenPrepStmt.setInt(4, tenantId);
             insertTokenPrepStmt.setString(5, OAuth2Util.getSanitizedUserStoreDomain(userDomain));
@@ -236,10 +239,9 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                     addScopePrepStmt.setString(1, accessTokenId);
                     addScopePrepStmt.setString(2, scope);
                     addScopePrepStmt.setInt(3, tenantId);
-                    addScopePrepStmt.addBatch();
+                    addScopePrepStmt.execute();
                 }
             }
-            addScopePrepStmt.executeBatch();
 
             if (tokenBindingAvailable) {
                 if (log.isDebugEnabled()) {
@@ -351,23 +353,22 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
 
     @Override
     public AccessTokenDO getLatestAccessToken(String consumerKey, AuthenticatedUser authzUser, String userStoreDomain,
-                                              String scope, boolean includeExpiredTokens) throws IdentityOAuth2Exception {
+            String scope, boolean includeExpiredTokens) throws IdentityOAuth2Exception {
 
         return getLatestAccessToken(consumerKey, authzUser, userStoreDomain, scope, NONE, includeExpiredTokens);
     }
 
     @Override
     public AccessTokenDO getLatestAccessToken(String consumerKey, AuthenticatedUser authzUser, String userStoreDomain,
-                                              String scope, String tokenBindingReference, boolean includeExpiredTokens) throws IdentityOAuth2Exception {
+            String scope, String tokenBindingReference, boolean includeExpiredTokens) throws IdentityOAuth2Exception {
 
         if (log.isDebugEnabled()) {
             log.debug("Retrieving latest access token for client: " + consumerKey + " user: " + authzUser.toString()
                     + " scope: " + scope);
         }
-        boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authzUser.toString());
         String tenantDomain = authzUser.getTenantDomain();
         int tenantId = OAuth2Util.getTenantId(tenantDomain);
-        String tenantAwareUsernameWithNoUserDomain = authzUser.getUserName();
+        String userId = authzUser.getUserId();
         String userDomain = OAuth2Util.getUserStoreDomain(authzUser);
         String authenticatedIDP = OAuth2Util.getAuthenticatedIDP(authzUser);
 
@@ -426,10 +427,6 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
 
             sql = OAuth2Util.getTokenPartitionedSqlByUserStore(sql, userDomain);
 
-            if (!isUsernameCaseSensitive) {
-                sql = sql.replace(AUTHZ_USER, LOWER_AUTHZ_USER);
-            }
-
             String hashedScope = OAuth2Util.hashScopes(scope);
             if (hashedScope == null) {
                 sql = sql.replace("TOKEN_SCOPE_HASH=?", "TOKEN_SCOPE_HASH IS NULL");
@@ -437,11 +434,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
 
             prepStmt = connection.prepareStatement(sql);
             prepStmt.setString(1, getPersistenceProcessor().getProcessedClientId(consumerKey));
-            if (isUsernameCaseSensitive) {
-                prepStmt.setString(2, tenantAwareUsernameWithNoUserDomain);
-            } else {
-                prepStmt.setString(2, tenantAwareUsernameWithNoUserDomain.toLowerCase());
-            }
+            prepStmt.setString(2, userId);
             prepStmt.setInt(3, tenantId);
             prepStmt.setString(4, userDomain);
 
@@ -489,7 +482,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                     String subjectIdentifier = resultSet.getString(10);
                     String grantType = resultSet.getString(11);
                     // data loss at dividing the validity period but can be neglected
-                    AuthenticatedUser user = OAuth2Util.createAuthenticatedUser(tenantAwareUsernameWithNoUserDomain,
+                    AuthenticatedUser user = OAuth2Util.createAuthenticatedUserWithId(userId,
                             userDomain, tenantDomain, authenticatedIDP);
 
                     user.setAuthenticatedSubjectIdentifier(subjectIdentifier);
@@ -528,17 +521,16 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
     }
 
     private AccessTokenDO getLatestAccessTokenByState(Connection connection, String consumerKey,
-                                                      AuthenticatedUser authzUser, String userStoreDomain, String scope, boolean active)
+            AuthenticatedUser authzUser, String userStoreDomain, String scope, boolean active)
             throws IdentityOAuth2Exception, SQLException {
 
         if (log.isDebugEnabled()) {
             log.debug("Retrieving latest " + (active ? " active" : " non active") + " access token for user: " +
                     authzUser.toString() + " client: " + consumerKey + " scope: " + scope);
         }
-        boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authzUser.toString());
         String tenantDomain = authzUser.getTenantDomain();
         int tenantId = OAuth2Util.getTenantId(tenantDomain);
-        String tenantAwareUsernameWithNoUserDomain = authzUser.getUserName();
+        String authzUserId = authzUser.getUserId();
         String userDomain = OAuth2Util.getUserStoreDomain(authzUser);
         String authenticatedIDP = OAuth2Util.getAuthenticatedIDP(authzUser);
 
@@ -637,10 +629,6 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
 
             sql = OAuth2Util.getTokenPartitionedSqlByUserStore(sql, userDomain);
 
-            if (!isUsernameCaseSensitive) {
-                sql = sql.replace(AUTHZ_USER, LOWER_AUTHZ_USER);
-            }
-
             String hashedScope = OAuth2Util.hashScopes(scope);
             if (hashedScope == null) {
                 sql = sql.replace("TOKEN_SCOPE_HASH=?", "TOKEN_SCOPE_HASH IS NULL");
@@ -648,11 +636,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
 
             prepStmt = connection.prepareStatement(sql);
             prepStmt.setString(1, getPersistenceProcessor().getProcessedClientId(consumerKey));
-            if (isUsernameCaseSensitive) {
-                prepStmt.setString(2, tenantAwareUsernameWithNoUserDomain);
-            } else {
-                prepStmt.setString(2, tenantAwareUsernameWithNoUserDomain.toLowerCase());
-            }
+            prepStmt.setString(2, authzUserId);
             prepStmt.setInt(3, tenantId);
             prepStmt.setString(4, userDomain);
 
@@ -685,7 +669,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                 String tokenId = resultSet.getString(8);
                 String subjectIdentifier = resultSet.getString(9);
                 // data loss at dividing the validity period but can be neglected
-                AuthenticatedUser user = OAuth2Util.createAuthenticatedUser(tenantAwareUsernameWithNoUserDomain,
+                AuthenticatedUser user = OAuth2Util.createAuthenticatedUserWithId(authzUserId,
                         userDomain, tenantDomain, authenticatedIDP);
                 ServiceProvider serviceProvider;
                 try {
@@ -729,9 +713,8 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
             log.debug("Retrieving access tokens for client: " + consumerKey + " user: " + userName.toString());
         }
 
-        boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(userName.toString());
         String tenantDomain = userName.getTenantDomain();
-        String tenantAwareUsernameWithNoUserDomain = userName.getUserName();
+        String userId = userName.getUserId();
         String userDomain = OAuth2Util.getUserStoreDomain(userName);
         userStoreDomain = OAuth2Util.getSanitizedUserStoreDomain(userStoreDomain);
         String authenticatedIDP = OAuth2Util.getAuthenticatedIDP(userName);
@@ -760,17 +743,9 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
 
             sql = OAuth2Util.getTokenPartitionedSqlByUserStore(sql, userStoreDomain);
 
-            if (!isUsernameCaseSensitive) {
-                sql = sql.replace(AUTHZ_USER, LOWER_AUTHZ_USER);
-            }
-
             prepStmt = connection.prepareStatement(sql);
             prepStmt.setString(1, getPersistenceProcessor().getProcessedClientId(consumerKey));
-            if (isUsernameCaseSensitive) {
-                prepStmt.setString(2, tenantAwareUsernameWithNoUserDomain);
-            } else {
-                prepStmt.setString(2, tenantAwareUsernameWithNoUserDomain.toLowerCase());
-            }
+            prepStmt.setString(2, userId);
             prepStmt.setInt(3, tenantId);
             prepStmt.setString(4, userDomain);
             if (OAuth2ServiceComponentHolder.isIDPIdColumnEnabled()) {
@@ -795,7 +770,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                     String subjectIdentifier = resultSet.getString(10);
                     String tokenBindingReference = resultSet.getString(11);
 
-                    AuthenticatedUser user = OAuth2Util.createAuthenticatedUser(tenantAwareUsernameWithNoUserDomain,
+                    AuthenticatedUser user = OAuth2Util.createAuthenticatedUserWithId(userId,
                             userDomain, tenantDomain, authenticatedIDP);
                     ServiceProvider serviceProvider;
                     try {
@@ -881,7 +856,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                 if (iterateId == 0) {
 
                     String consumerKey = getPersistenceProcessor().getPreprocessedClientId(resultSet.getString(1));
-                    String authorizedUser = resultSet.getString(2);
+                    String authorizedUserId = resultSet.getString(2);
                     int tenantId = resultSet.getInt(3);
                     String tenantDomain = OAuth2Util.getTenantDomain(tenantId);
                     String userDomain = resultSet.getString(4);
@@ -902,7 +877,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                         authenticatedIDP = resultSet.getString(16);
                     }
 
-                    AuthenticatedUser user = OAuth2Util.createAuthenticatedUser(authorizedUser,
+                    AuthenticatedUser user = OAuth2Util.createAuthenticatedUserWithId(authorizedUserId,
                             userDomain, tenantDomain, authenticatedIDP);
                     ServiceProvider serviceProvider;
                     try {
@@ -935,7 +910,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
 
             if (scopes.size() > 0 && dataDO != null) {
                 dataDO.setScope((String[]) ArrayUtils.addAll(dataDO.getScope(),
-                        scopes.toArray(new String[scopes.size()])));
+                        scopes.toArray(new String[0])));
             }
 
         } catch (SQLException e) {
@@ -1084,7 +1059,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
     }
 
     private void updateAccessTokenState(Connection connection, String tokenId, String tokenState, String tokenStateId,
-                                        String userStoreDomain) throws IdentityOAuth2Exception, SQLException {
+            String userStoreDomain) throws IdentityOAuth2Exception, SQLException {
 
         PreparedStatement prepStmt = null;
         try {
@@ -1370,7 +1345,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                     TOKEN_STATE_REVOKED);
 
             if (isTokenCleanupFeatureEnabled && tokenId != null) {
-                oldTokenCleanupObject.cleanupTokenByTokenId(tokenId, connection);
+                    oldTokenCleanupObject.cleanupTokenByTokenId(tokenId, connection);
             }
         } catch (SQLException e) {
             IdentityDatabaseUtil.rollbackTransaction(connection);
@@ -1394,8 +1369,6 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
             log.debug("Retrieving access tokens of user: " + authenticatedUser.toString());
         }
 
-        String accessTokenStoreTable = OAuthConstants.ACCESS_TOKEN_STORE_TABLE;
-        boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authenticatedUser.toString());
         boolean isIdTokenIssuedForClientCredentialsGrant = isIdTokenIssuedForApplicationTokens();
         Connection connection = IdentityDatabaseUtil.getDBConnection(false);
         PreparedStatement ps = null;
@@ -1404,15 +1377,8 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
         try {
             String sqlQuery = OAuth2Util.getTokenPartitionedSqlByUserId(SQLQueries.GET_ACCESS_TOKEN_BY_AUTHZUSER,
                     authenticatedUser.toString());
-            if (!isUsernameCaseSensitive) {
-                sqlQuery = sqlQuery.replace(AUTHZ_USER, LOWER_AUTHZ_USER);
-            }
             ps = connection.prepareStatement(sqlQuery);
-            if (isUsernameCaseSensitive) {
-                ps.setString(1, authenticatedUser.getUserName());
-            } else {
-                ps.setString(1, authenticatedUser.getUserName().toLowerCase());
-            }
+            ps.setString(1, authenticatedUser.getUserId());
             ps.setInt(2, OAuth2Util.getTenantId(authenticatedUser.getTenantDomain()));
             ps.setString(3, OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE);
             ps.setString(4, authenticatedUser.getUserStoreDomain());
@@ -1437,7 +1403,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
         } catch (SQLException e) {
             IdentityDatabaseUtil.rollbackTransaction(connection);
             throw new IdentityOAuth2Exception("Error occurred while revoking Access Token with user Name : " +
-                    authenticatedUser.getUserName() + " tenant ID : " + OAuth2Util.getTenantId(authenticatedUser
+                    authenticatedUser.getUserId() + " tenant ID : " + OAuth2Util.getTenantId(authenticatedUser
                     .getTenantDomain()), e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
@@ -1460,7 +1426,6 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
             log.debug("Retrieving access tokens of user: " + authenticatedUser.toString());
         }
 
-        boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authenticatedUser.toString());
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
         ResultSet rs;
@@ -1468,15 +1433,8 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
         try {
             String sqlQuery = OAuth2Util.getTokenPartitionedSqlByUserId(
                     SQLQueries.GET_OPEN_ID_ACCESS_TOKEN_DATA_BY_AUTHZUSER, authenticatedUser.toString());
-            if (!isUsernameCaseSensitive) {
-                sqlQuery = sqlQuery.replace(AUTHZ_USER, LOWER_AUTHZ_USER);
-            }
             ps = connection.prepareStatement(sqlQuery);
-            if (isUsernameCaseSensitive) {
-                ps.setString(1, authenticatedUser.getUserName());
-            } else {
-                ps.setString(1, authenticatedUser.getUserName().toLowerCase());
-            }
+            ps.setString(1, authenticatedUser.getUserId());
             ps.setInt(2, OAuth2Util.getTenantId(authenticatedUser.getTenantDomain()));
             ps.setString(3, OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE);
             ps.setString(4, authenticatedUser.getUserStoreDomain());
@@ -1490,7 +1448,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
         } catch (SQLException e) {
             IdentityDatabaseUtil.rollBack(connection);
             throw new IdentityOAuth2Exception("Error occurred while revoking access token with username : " +
-                    authenticatedUser.getUserName() + " tenant ID : " + OAuth2Util.getTenantId(authenticatedUser
+                    authenticatedUser.getUserId() + " tenant ID : " + OAuth2Util.getTenantId(authenticatedUser
                     .getTenantDomain()), e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
@@ -1694,7 +1652,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                     newSope[previousScope.length] = rs.getString(5);
                     tokenObj.setScope(newSope);
                 } else {
-                    String authzUser = rs.getString(1);
+                    String authzUserId = rs.getString(1);
                     int tenentId = rs.getInt(3);
                     String userDomain = rs.getString(4);
                     String tokenSope = rs.getString(5);
@@ -1703,7 +1661,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                         authenticatedIDP = rs.getString(6);
                     }
                     String[] scope = OAuth2Util.buildScopeArray(tokenSope);
-                    AuthenticatedUser user = OAuth2Util.createAuthenticatedUser(authzUser,
+                    AuthenticatedUser user = OAuth2Util.createAuthenticatedUserWithId(authzUserId,
                             userDomain, OAuth2Util.getTenantDomain(tenentId), authenticatedIDP);
                     AccessTokenDO aTokenDetail = new AccessTokenDO();
                     aTokenDetail.setAccessToken(token);
@@ -1716,8 +1674,8 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
             activeDetailedTokens = new HashSet<>(tokenMap.values());
         } catch (SQLException e) {
             IdentityDatabaseUtil.rollbackTransaction(connection);
-            throw new IdentityOAuth2Exception("Error occurred while getting access tokens from acces token table for " +
-                    "the application with consumer key : " + consumerKey, e);
+            throw new IdentityOAuth2Exception("Error occurred while getting access tokens from access token table for" +
+                    " the application with consumer key : " + consumerKey, e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
         }
@@ -1839,7 +1797,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
 
             while (resultSet.next()) {
                 String accessToken = getPersistenceProcessor().
-                        getPreprocessedAccessTokenIdentifier(resultSet.getString(1));
+                            getPreprocessedAccessTokenIdentifier(resultSet.getString(1));
                 if (accessTokenDOMap.get(accessToken) == null) {
                     String refreshToken = getPersistenceProcessor().getPreprocessedRefreshToken(resultSet.getString(2));
                     Timestamp issuedTime = resultSet.getTimestamp(3, Calendar.getInstance(TimeZone.getTimeZone(UTC)));
@@ -1850,7 +1808,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                     String tokenType = resultSet.getString(7);
                     String[] scope = OAuth2Util.buildScopeArray(resultSet.getString(8));
                     String tokenId = resultSet.getString(9);
-                    String authzUser = resultSet.getString(10);
+                    String authzUserId = resultSet.getString(10);
                     userStoreDomain = resultSet.getString(11);
                     String consumerKey = resultSet.getString(12);
                     String authenticatedIDP = null;
@@ -1858,7 +1816,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                         authenticatedIDP = resultSet.getString(13);
                     }
 
-                    AuthenticatedUser user = OAuth2Util.createAuthenticatedUser(authzUser, userStoreDomain,
+                    AuthenticatedUser user = OAuth2Util.createAuthenticatedUserWithId(authzUserId, userStoreDomain,
                             OAuth2Util.getTenantDomain(tenantId), authenticatedIDP);
                     AccessTokenDO dataDO = new AccessTokenDO(consumerKey, user, scope, issuedTime,
                             refreshTokenIssuedTime, validityPeriodInMillis,
@@ -1927,14 +1885,14 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                     String tokenType = resultSet.getString(7);
                     String[] scope = OAuth2Util.buildScopeArray(resultSet.getString(8));
                     String tokenId = resultSet.getString(9);
-                    String authzUser = resultSet.getString(10);
+                    String authzUserId = resultSet.getString(10);
                     String consumerKey = resultSet.getString(11);
                     String authenticatedIDP = null;
                     if (OAuth2ServiceComponentHolder.isIDPIdColumnEnabled()) {
                         authenticatedIDP = resultSet.getString(12);
                     }
 
-                    AuthenticatedUser user = OAuth2Util.createAuthenticatedUser(authzUser, userStoreDomain,
+                    AuthenticatedUser user = OAuth2Util.createAuthenticatedUserWithId(authzUserId, userStoreDomain,
                             OAuth2Util.getTenantDomain(tenantId), authenticatedIDP);
                     AccessTokenDO dataDO = new AccessTokenDO(consumerKey, user, scope, issuedTime,
                             refreshTokenIssuedTime, validityPeriodInMillis,
@@ -2160,63 +2118,63 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                     OAuth2Util.buildScopeString(accessTokenDO.getScope()), true);
             OauthTokenIssuer oauthTokenIssuer = OAuth2Util.getOAuthTokenIssuerForOAuthApp(consumerKey);
 
-            if (latestActiveToken != null) {
-                OAuthTokenReqMessageContext tokReqMsgCtx = OAuth2Util.getTokenRequestContext();
-                // For JWT tokens, always issue a new token expiring the existing token.
-                if (oauthTokenIssuer.renewAccessTokenPerRequest(tokReqMsgCtx)) {
-                    updateAccessTokenState(connection, latestActiveToken.getTokenId(), OAuthConstants.TokenStates
-                            .TOKEN_STATE_EXPIRED, UUID.randomUUID().toString(), userStoreDomain);
-                    // Update token issued time make this token as latest token & try to store it again.
-                    accessTokenDO.setIssuedTime(new Timestamp(new Date().getTime()));
-                    insertAccessToken(accessTokenDO.getAccessToken(), consumerKey, accessTokenDO, connection,
-                            userStoreDomain, retryAttemptCounter);
-                } else if (OAuth2Util.getAccessTokenExpireMillis(latestActiveToken) != 0 &&
-                        (latestNonActiveToken == null || latestActiveToken.getIssuedTime().after
-                                (latestNonActiveToken.getIssuedTime()))) {
+                if (latestActiveToken != null) {
+                    OAuthTokenReqMessageContext tokReqMsgCtx = OAuth2Util.getTokenRequestContext();
+                    // For JWT tokens, always issue a new token expiring the existing token.
+                    if (oauthTokenIssuer.renewAccessTokenPerRequest(tokReqMsgCtx)) {
+                        updateAccessTokenState(connection, latestActiveToken.getTokenId(), OAuthConstants.TokenStates
+                                .TOKEN_STATE_EXPIRED, UUID.randomUUID().toString(), userStoreDomain);
+                        // Update token issued time make this token as latest token & try to store it again.
+                        accessTokenDO.setIssuedTime(new Timestamp(new Date().getTime()));
+                        insertAccessToken(accessTokenDO.getAccessToken(), consumerKey, accessTokenDO, connection,
+                                userStoreDomain, retryAttemptCounter);
+                    } else if (OAuth2Util.getAccessTokenExpireMillis(latestActiveToken) != 0 &&
+                            (latestNonActiveToken == null || latestActiveToken.getIssuedTime().after
+                                    (latestNonActiveToken.getIssuedTime()))) {
 
-                    // If there is an active token in the database, it is not expired and it is the last issued
-                    // token, use the existing token. In here we can use existing token since we have a
-                    // synchronised communication.
-                    accessTokenDO.setTokenId(latestActiveToken.getTokenId());
-                    accessTokenDO.setAccessToken(latestActiveToken.getAccessToken());
-                    accessTokenDO.setRefreshToken(latestActiveToken.getRefreshToken());
-                    accessTokenDO.setIssuedTime(latestActiveToken.getIssuedTime());
-                    accessTokenDO.setRefreshTokenIssuedTime(latestActiveToken.getRefreshTokenIssuedTime());
-                    accessTokenDO.setValidityPeriodInMillis(latestActiveToken.getValidityPeriodInMillis());
-                    accessTokenDO.setRefreshTokenValidityPeriodInMillis(
-                            latestActiveToken.getRefreshTokenValidityPeriodInMillis());
-                    accessTokenDO.setTokenType(latestActiveToken.getTokenType());
-                    log.info("Successfully recovered 'CON_APP_KEY' constraint violation with the attempt : "
-                            + retryAttemptCounter);
+                        // If there is an active token in the database, it is not expired and it is the last issued
+                        // token, use the existing token. In here we can use existing token since we have a
+                        // synchronised communication.
+                        accessTokenDO.setTokenId(latestActiveToken.getTokenId());
+                        accessTokenDO.setAccessToken(latestActiveToken.getAccessToken());
+                        accessTokenDO.setRefreshToken(latestActiveToken.getRefreshToken());
+                        accessTokenDO.setIssuedTime(latestActiveToken.getIssuedTime());
+                        accessTokenDO.setRefreshTokenIssuedTime(latestActiveToken.getRefreshTokenIssuedTime());
+                        accessTokenDO.setValidityPeriodInMillis(latestActiveToken.getValidityPeriodInMillis());
+                        accessTokenDO.setRefreshTokenValidityPeriodInMillis(
+                                latestActiveToken.getRefreshTokenValidityPeriodInMillis());
+                        accessTokenDO.setTokenType(latestActiveToken.getTokenType());
+                        log.info("Successfully recovered 'CON_APP_KEY' constraint violation with the attempt : "
+                                + retryAttemptCounter);
 
-                } else if (!(OAuth2Util.getAccessTokenExpireMillis(latestActiveToken) == 0)) {
-                    // If the last active token in the database is expired, update the token status in the database.
-                    updateAccessTokenState(connection, latestActiveToken.getTokenId(), OAuthConstants.TokenStates
-                            .TOKEN_STATE_EXPIRED, UUID.randomUUID().toString(), userStoreDomain);
+                    } else if (!(OAuth2Util.getAccessTokenExpireMillis(latestActiveToken) == 0)) {
+                        // If the last active token in the database is expired, update the token status in the database.
+                        updateAccessTokenState(connection, latestActiveToken.getTokenId(), OAuthConstants.TokenStates
+                                .TOKEN_STATE_EXPIRED, UUID.randomUUID().toString(), userStoreDomain);
 
-                    // Update token issued time make this token as latest token & try to store it again.
-                    accessTokenDO.setIssuedTime(new Timestamp(new Date().getTime()));
-                    insertAccessToken(accessToken, consumerKey, accessTokenDO, connection, userStoreDomain,
-                            retryAttemptCounter);
+                        // Update token issued time make this token as latest token & try to store it again.
+                        accessTokenDO.setIssuedTime(new Timestamp(new Date().getTime()));
+                        insertAccessToken(accessToken, consumerKey, accessTokenDO, connection, userStoreDomain,
+                                retryAttemptCounter);
 
+                    } else {
+                        // Inactivate latest active token.
+                        updateAccessTokenState(connection, latestActiveToken.getTokenId(), OAuthConstants.TokenStates
+                                .TOKEN_STATE_INACTIVE, UUID.randomUUID().toString(), userStoreDomain);
+
+                        // Update token issued time make this token as latest token & try to store it again.
+                        accessTokenDO.setIssuedTime(new Timestamp(new Date().getTime()));
+                        insertAccessToken(accessToken, consumerKey, accessTokenDO, connection, userStoreDomain,
+                                retryAttemptCounter);
+                    }
                 } else {
-                    // Inactivate latest active token.
-                    updateAccessTokenState(connection, latestActiveToken.getTokenId(), OAuthConstants.TokenStates
-                            .TOKEN_STATE_INACTIVE, UUID.randomUUID().toString(), userStoreDomain);
+                    // In this case another process already updated the latest active token to inactive.
 
                     // Update token issued time make this token as latest token & try to store it again.
                     accessTokenDO.setIssuedTime(new Timestamp(new Date().getTime()));
                     insertAccessToken(accessToken, consumerKey, accessTokenDO, connection, userStoreDomain,
                             retryAttemptCounter);
                 }
-            } else {
-                // In this case another process already updated the latest active token to inactive.
-
-                // Update token issued time make this token as latest token & try to store it again.
-                accessTokenDO.setIssuedTime(new Timestamp(new Date().getTime()));
-                insertAccessToken(accessToken, consumerKey, accessTokenDO, connection, userStoreDomain,
-                        retryAttemptCounter);
-            }
             connection.commit();
         } catch (SQLException e) {
             try {
@@ -2268,7 +2226,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
      */
     @Override
     public List<AccessTokenDO> getLatestAccessTokens(String consumerKey, AuthenticatedUser authzUser,
-                                                     String userStoreDomain, String scope, boolean includeExpiredTokens, int limit)
+            String userStoreDomain, String scope, boolean includeExpiredTokens, int limit)
             throws IdentityOAuth2Exception {
 
         return getLatestAccessTokens(consumerKey, authzUser, userStoreDomain, scope, NONE, includeExpiredTokens, limit);
@@ -2288,10 +2246,9 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
         if (authzUser == null) {
             throw new IdentityOAuth2Exception("Invalid user information for given consumerKey: " + consumerKey);
         }
-        boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authzUser.toString());
         String tenantDomain = authzUser.getTenantDomain();
         int tenantId = OAuth2Util.getTenantId(tenantDomain);
-        String tenantAwareUsernameWithNoUserDomain = authzUser.getUserName();
+        String userId = authzUser.getUserId();
         userStoreDomain = OAuth2Util.getSanitizedUserStoreDomain(userStoreDomain);
         String userDomain = OAuth2Util.getUserStoreDomain(authzUser);
         String authenticatedIDP = OAuth2Util.getAuthenticatedIDP(authzUser);
@@ -2323,7 +2280,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                     sql = SQLQueries.RETRIEVE_LATEST_ACCESS_TOKEN_BY_CLIENT_ID_USER_SCOPE_IDP_NAME_INFORMIX;
                 } else {
                     sql = SQLQueries.RETRIEVE_LATEST_ACCESS_TOKEN_BY_CLIENT_ID_USER_SCOPE_IDP_NAME_ORACLE;
-                    sql = sql.replace("ROWNUM < 2", "ROWNUM < " + Integer.toString(limit + 1));
+                    sql = sql.replace("ROWNUM < 2", "ROWNUM < " + (limit + 1));
                     sqlAltered = true;
                 }
             } else {
@@ -2344,7 +2301,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                     sql = SQLQueries.RETRIEVE_LATEST_ACCESS_TOKEN_BY_CLIENT_ID_USER_SCOPE_INFORMIX;
                 } else {
                     sql = SQLQueries.RETRIEVE_LATEST_ACCESS_TOKEN_BY_CLIENT_ID_USER_SCOPE_ORACLE;
-                    sql = sql.replace("ROWNUM < 2", "ROWNUM < " + Integer.toString(limit + 1));
+                    sql = sql.replace("ROWNUM < 2", "ROWNUM < " + (limit + 1));
                     sqlAltered = true;
                 }
             }
@@ -2359,10 +2316,6 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
 
             sql = OAuth2Util.getTokenPartitionedSqlByUserStore(sql, userStoreDomain);
 
-            if (!isUsernameCaseSensitive) {
-                sql = sql.replace(AUTHZ_USER, LOWER_AUTHZ_USER);
-            }
-
             String hashedScope = OAuth2Util.hashScopes(scope);
             if (hashedScope == null) {
                 sql = sql.replace("TOKEN_SCOPE_HASH=?", "TOKEN_SCOPE_HASH IS NULL");
@@ -2370,11 +2323,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
 
             prepStmt = connection.prepareStatement(sql);
             prepStmt.setString(1, getPersistenceProcessor().getProcessedClientId(consumerKey));
-            if (isUsernameCaseSensitive) {
-                prepStmt.setString(2, tenantAwareUsernameWithNoUserDomain);
-            } else {
-                prepStmt.setString(2, tenantAwareUsernameWithNoUserDomain.toLowerCase());
-            }
+            prepStmt.setString(2, userId);
             prepStmt.setInt(3, tenantId);
             prepStmt.setString(4, userDomain);
 
@@ -2416,7 +2365,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                     String tokenId = resultSet.getString(9);
                     String subjectIdentifier = resultSet.getString(10);
                     // data loss at dividing the validity period but can be neglected
-                    AuthenticatedUser user = OAuth2Util.createAuthenticatedUser(tenantAwareUsernameWithNoUserDomain,
+                    AuthenticatedUser user = OAuth2Util.createAuthenticatedUserWithId(userId,
                             userDomain, tenantDomain, authenticatedIDP);
 
                     ServiceProvider serviceProvider;
@@ -2567,14 +2516,14 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
             throws IdentityOAuth2Exception {
 
         if (log.isDebugEnabled()) {
-            log.debug("Retrieving active access tokens issued to user, " + user.getUserName() + " with binding " +
+            log.debug("Retrieving active access tokens issued to user, " + user.getUserId() + " with binding " +
                     "reference " + bindingRef);
         }
 
         JdbcTemplate jdbcTemplate = JdbcUtils.getNewTemplate();
         try {
-            String sqlQuery = OAuth2Util.getTokenPartitionedSqlByUserId(SQLQueries
-                    .GET_ACCESS_TOKENS_BY_BINDING_REFERENCE_AND_USER, user.getUserName());
+            String sqlQuery = OAuth2Util.getTokenPartitionedSqlByUserStore(SQLQueries
+                    .GET_ACCESS_TOKENS_BY_BINDING_REFERENCE_AND_USER, user.getUserStoreDomain());
             int tenantId = OAuth2Util.getTenantId(user.getTenantDomain());
             Map<String, AccessTokenDO> tokenMap = new HashMap<>();
             jdbcTemplate.executeQuery(sqlQuery,
@@ -2585,10 +2534,10 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                         if (tokenMap.containsKey(token)) {
                             AccessTokenDO tokenObj = tokenMap.get(token);
                             String[] previousScope = tokenObj.getScope();
-                            String[] newSope = new String[tokenObj.getScope().length + 1];
-                            System.arraycopy(previousScope, 0, newSope, 0, previousScope.length);
-                            newSope[previousScope.length] = resultSet.getString(2);
-                            tokenObj.setScope(newSope);
+                            String[] newScope = new String[tokenObj.getScope().length + 1];
+                            System.arraycopy(previousScope, 0, newScope, 0, previousScope.length);
+                            newScope[previousScope.length] = resultSet.getString(2);
+                            tokenObj.setScope(newScope);
                         } else {
                             String consumerKey = resultSet.getString("CONSUMER_KEY");
                             String tokenScope = resultSet.getString("TOKEN_SCOPE");
@@ -2621,7 +2570,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                         return null;
                     }),
                     (PreparedStatement preparedStatement) -> {
-                        preparedStatement.setString(1, user.getUserName());
+                        preparedStatement.setString(1, user.getUserId());
                         preparedStatement.setInt(2, tenantId);
                         preparedStatement.setString(3, user.getUserStoreDomain());
                         preparedStatement.setString(4, bindingRef);
@@ -2641,9 +2590,8 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
 
         JdbcTemplate jdbcTemplate = JdbcUtils.getNewTemplate();
         try {
-            String sqlQuery = GET_ACCESS_TOKENS_BY_BINDING_REFERENCE;
             Map<String, AccessTokenDO> tokenMap = new HashMap<>();
-            jdbcTemplate.executeQuery(sqlQuery,
+            jdbcTemplate.executeQuery(GET_ACCESS_TOKENS_BY_BINDING_REFERENCE,
                     rethrowRowMapper((resultSet, i) -> {
                         String token = getPersistenceProcessor()
                                 .getPreprocessedAccessTokenIdentifier(resultSet.getString("ACCESS_TOKEN"));
@@ -2661,10 +2609,10 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                             String refreshToken = resultSet.getString("REFRESH_TOKEN");
                             String tokenId = resultSet.getString("TOKEN_ID");
                             int tenantId = resultSet.getInt("TENANT_ID");
-                            String authzUser = resultSet.getString("AUTHZ_USER");
+                            String authzUserId = resultSet.getString("AUTHZ_USER_ID");
                             String userDomain = resultSet.getString("USER_DOMAIN");
                             String authenticatedIDP = resultSet.getString("IDP_ID");
-                            AuthenticatedUser user = OAuth2Util.createAuthenticatedUser(authzUser,
+                            AuthenticatedUser user = OAuth2Util.createAuthenticatedUserWithId(authzUserId,
                                     userDomain, OAuth2Util.getTenantDomain(tenantId), authenticatedIDP);
                             Timestamp issuedTime = resultSet
                                     .getTimestamp("TIME_CREATED", Calendar.getInstance(TimeZone.getTimeZone(UTC)));

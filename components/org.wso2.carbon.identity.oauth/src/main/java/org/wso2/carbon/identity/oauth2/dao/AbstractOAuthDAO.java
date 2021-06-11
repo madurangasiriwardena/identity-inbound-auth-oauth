@@ -39,7 +39,7 @@ each purpose  and factory class to get instance of each DAO classes were introdu
  on org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO were distributed among new set of classes, each of these method
  need to be reviewed  and refactored  during next step.
  */
-abstract class AbstractOAuthDAO {
+abstract public class AbstractOAuthDAO {
 
     private static final Log log = LogFactory.getLog(AbstractOAuthDAO.class);
 

@@ -43,7 +43,7 @@ public class OAuthTokenPersistenceFactory {
     public OAuthTokenPersistenceFactory() {
 
         this.authorizationCodeDAO = new AuthorizationCodeDAOImpl();
-        this.tokenDAO = new AccessTokenDAOImpl();
+        this.tokenDAO = new CacheBackedAccessTokenDAO();
         this.scopeDAO = new OAuthScopeDAOImpl();
         this.managementDAO = new TokenManagementDAOImpl();
         this.requestObjectDAO = new RequestObjectDAOImpl();

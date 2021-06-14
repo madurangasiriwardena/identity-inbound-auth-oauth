@@ -949,7 +949,7 @@ public class OAuthAdminServiceImpl {
             String errorMsg = "Error occurred while retrieving apps authorized by User ID : " + username;
             throw handleError(errorMsg, e);
         }
-        Set<OAuthConsumerAppDTO> appDTOs = new HashSet<OAuthConsumerAppDTO>();
+        Set<OAuthConsumerAppDTO> appDTOs = new HashSet<>();
         for (String clientId : clientIds) {
             Set<AccessTokenDO> accessTokenDOs;
             try {
@@ -962,7 +962,7 @@ public class OAuthAdminServiceImpl {
                 throw handleError(errorMsg, e);
             }
             if (!accessTokenDOs.isEmpty()) {
-                Set<String> distinctClientUserScopeCombo = new HashSet<String>();
+                Set<String> distinctClientUserScopeCombo = new HashSet<>();
                 for (AccessTokenDO accessTokenDO : accessTokenDOs) {
                     AccessTokenDO scopedToken;
                     String scopeString = buildScopeString(accessTokenDO.getScope());

@@ -250,7 +250,7 @@ public class OAuthTokenSessionMappingEventHandler extends AbstractOAuthEventInte
 
         if (OAuthTokenPersistenceFactory.getInstance().getAccessTokenDAO()
                 .getTokenIdBySessionIdentifier(sessionContextId).contains(tokenId)) {
-            /**
+            /*
              *  If there is already a session to token mapping exists, we don't need to persist that mapping again.
              *  This can happen if a user try to login from the same browser again with same (app+scope+binding).
              */

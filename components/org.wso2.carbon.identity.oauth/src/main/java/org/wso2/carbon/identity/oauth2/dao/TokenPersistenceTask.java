@@ -38,6 +38,7 @@ public class TokenPersistenceTask implements Runnable {
     @Override
     public void run() {
 
+        //TODO shouldn't we remove this?
         log.debug("Access Token context persist consumer is started");
 
         while (true) {

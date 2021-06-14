@@ -376,8 +376,6 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
                     newTokenBean.getAccessToken());
         }
 
-        // Update cache with newly added token.
-        updateCacheIfEnabled(newTokenBean, OAuth2Util.buildScopeString(tokReqMsgCtx.getScope()), oauthTokenIssuer);
         return createResponseWithTokenBean(newTokenBean, validityPeriodInMillis, scope);
     }
 
@@ -463,45 +461,6 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
         }
         storeAccessToken(tokenReq, getUserStoreDomain(tokReqMsgCtx.getAuthorizedUser()), newTokenBean, newAccessToken,
                 existingTokenBean);
-    }
-
-    private void updateCacheIfEnabled(AccessTokenDO newTokenBean, String scope, OauthTokenIssuer oauthTokenIssuer)
-            throws IdentityOAuth2Exception {
-
-        if (isHashDisabled && cacheEnabled) {
-            AccessTokenDO tokenToCache = AccessTokenDO.clone(newTokenBean);
-            // If usePersistedAccessTokenAlias is enabled then in the DB the
-            // access token alias taken from the OauthTokenIssuer's getAccessTokenHash
-            // method is set as the token.
-            if (oauthTokenIssuer.usePersistedAccessTokenAlias()) {
-                try {
-                    String persistedTokenIdentifier =
-                            oauthTokenIssuer.getAccessTokenHash(newTokenBean.getAccessToken());
-                    tokenToCache.setAccessToken(persistedTokenIdentifier);
-                } catch (OAuthSystemException e) {
-                    if (log.isDebugEnabled()) {
-                        if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
-                            log.debug("Token issuer: " + oauthTokenIssuer.getClass() + " was tried and" +
-                                    " failed to parse the received token: " + tokenToCache.getAccessToken(), e);
-                        } else {
-                            log.debug("Token issuer: " + oauthTokenIssuer.getClass() + " was tried and" +
-                                    " failed to parse the received token.", e);
-                        }
-                    }
-                }
-            }
-
-            OAuthCacheKey cacheKey = getOAuthCacheKey(scope, tokenToCache.getConsumerKey(),
-                    tokenToCache.getAuthzUser().toString(), tokenToCache.getAuthzUser().getFederatedIdPName(),
-                    getTokenBindingReference(tokenToCache));
-            oauthCache.addToCache(cacheKey, tokenToCache);
-            if (log.isDebugEnabled()) {
-                log.debug("Access token was added to OAuthCache with cache key : " + cacheKey.getCacheKeyString());
-            }
-
-            // Adding AccessTokenDO to improve validation performance
-            OAuth2Util.addTokenDOtoCache(newTokenBean);
-        }
     }
 
     private void setDetailsToMessageContext(OAuthTokenReqMessageContext tokReqMsgCtx, long validityPeriodInMillis,
@@ -788,87 +747,15 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
 
     private AccessTokenDO getExistingToken(OAuthTokenReqMessageContext tokenMsgCtx, OAuthCacheKey cacheKey)
             throws IdentityOAuth2Exception {
-        AccessTokenDO existingToken = null;
+
         OAuth2AccessTokenReqDTO tokenReq = tokenMsgCtx.getOauth2AccessTokenReqDTO();
         String scope = OAuth2Util.buildScopeString(tokenMsgCtx.getScope());
         String tokenBindingReference = getTokenBindingReference(tokenMsgCtx);
 
-        if (cacheEnabled) {
-            existingToken = getExistingTokenFromCache(cacheKey, tokenReq.getClientId(),
-                    tokenMsgCtx.getAuthorizedUser().toString(), scope, tokenBindingReference);
-        }
-
-        if (existingToken == null) {
-            existingToken = getExistingTokenFromDB(tokenMsgCtx, tokenReq, scope, cacheKey);
-        }
-        return existingToken;
-    }
-
-    private AccessTokenDO getExistingTokenFromDB(OAuthTokenReqMessageContext tokenMsgCtx,
-                                                 OAuth2AccessTokenReqDTO tokenReq, String scope, OAuthCacheKey cacheKey)
-            throws IdentityOAuth2Exception {
-
-        AccessTokenDO existingToken = OAuthTokenPersistenceFactory.getInstance().getAccessTokenDAO()
+        return OAuthTokenPersistenceFactory.getInstance().getAccessTokenDAO()
                 .getLatestAccessToken(tokenReq.getClientId(), tokenMsgCtx.getAuthorizedUser(),
                         getUserStoreDomain(tokenMsgCtx.getAuthorizedUser()), scope,
-                        getTokenBindingReference(tokenMsgCtx), false);
-        if (existingToken != null) {
-            if (log.isDebugEnabled()) {
-                if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
-                    log.debug("Retrieved latest access token(hashed): " + DigestUtils.sha256Hex
-                            (existingToken.getAccessToken()) + " in the state: " + existingToken.getTokenState() +
-                            " for client Id: " + tokenReq.getClientId() + " user: " + tokenMsgCtx.getAuthorizedUser() +
-                            " and scope: " + scope + " from db");
-                } else {
-                    log.debug("Retrieved latest access token for client Id: " + tokenReq.getClientId() + " user: " +
-                            tokenMsgCtx.getAuthorizedUser() + " and scope: " + scope + " from db");
-                }
-            }
-            long expireTime = getAccessTokenExpiryTimeMillis(existingToken);
-            if (TOKEN_STATE_ACTIVE.equals(existingToken.getTokenState()) &&
-                    expireTime != 0) {
-                // Active token retrieved from db, adding to cache if cacheEnabled
-                addTokenToCache(cacheKey, existingToken);
-            }
-        }
-        return existingToken;
-    }
-
-    private AccessTokenDO getExistingTokenFromCache(OAuthCacheKey cacheKey, String consumerKey, String authorizedUser,
-                                                    String scope, String tokenBindingReference)
-            throws IdentityOAuth2Exception {
-
-        AccessTokenDO existingToken = null;
-        CacheEntry cacheEntry = oauthCache.getValueFromCache(cacheKey);
-        if (cacheEntry instanceof AccessTokenDO) {
-            existingToken = (AccessTokenDO) cacheEntry;
-            if (log.isDebugEnabled() && IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
-                log.debug("Retrieved active access token(hashed): " + DigestUtils
-                        .sha256Hex(existingToken.getAccessToken()) + " in the state: " + existingToken.getTokenState()
-                        + " for client Id: " + consumerKey + ", user: " + authorizedUser + " ,scope: " + scope
-                        + " and token binding reference: " + tokenBindingReference + " from cache");
-            }
-            if (getAccessTokenExpiryTimeMillis(existingToken) == 0) {
-                // Token is expired. Clear it from cache.
-                removeFromCache(cacheKey, consumerKey, existingToken);
-                return null;
-            }
-        }
-        return existingToken;
-    }
-
-    private void removeFromCache(OAuthCacheKey cacheKey, String consumerKey, AccessTokenDO existingAccessTokenDO) {
-        oauthCache.clearCacheEntry(cacheKey);
-        if (log.isDebugEnabled()) {
-            if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
-                log.debug("Access token(hashed) " + DigestUtils.sha256Hex(existingAccessTokenDO
-                        .getAccessToken()) + " is expired. Therefore cleared it from cache and marked" +
-                        " it as expired in database");
-            } else {
-                log.debug("Existing access token for client: " + consumerKey + " is expired. " +
-                        "Therefore cleared it from cache and marked it as expired in database");
-            }
-        }
+                        tokenBindingReference, false);
     }
 
     private boolean isRefreshTokenValid(AccessTokenDO existingAccessTokenDO, long validityPeriod, String consumerKey) {

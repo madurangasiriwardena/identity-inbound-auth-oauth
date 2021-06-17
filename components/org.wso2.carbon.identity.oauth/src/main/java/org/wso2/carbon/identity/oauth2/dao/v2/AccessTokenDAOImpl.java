@@ -41,7 +41,6 @@ import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dao.AbstractOAuthDAO;
 import org.wso2.carbon.identity.oauth2.dao.AccessTokenDAO;
-import org.wso2.carbon.identity.oauth2.dao.OldTokensCleanDAO;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
@@ -90,7 +89,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
     private static final String DEFAULT_TOKEN_TO_SESSION_MAPPING = "DEFAULT";
 
     private static final Log log = LogFactory.getLog(AccessTokenDAOImpl.class);
-    OldTokensCleanDAO oldTokenCleanupObject = new OldTokensCleanDAO();
+    OldTokensCleanDAO oldTokenCleanupDAO = new OldTokensCleanDAO();
 
     @Override
     public void insertAccessToken(String accessToken, String consumerKey, AccessTokenDO accessTokenDO,
@@ -148,11 +147,11 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
         if (log.isDebugEnabled()) {
             if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
                 log.debug("Persisting access token(hashed): " + DigestUtils.sha256Hex(accessTokenHash) + " for " +
-                        "client: " + consumerKey + " user: " + accessTokenDO.getAuthzUser().toString() + " scope: "
+                        "client: " + consumerKey + " user: " + accessTokenDO.getAuthzUser().getUserId() + " scope: "
                         + Arrays.toString(accessTokenDO.getScope()));
             } else {
                 log.debug("Persisting access token for client: " + consumerKey + " user: " +
-                        accessTokenDO.getAuthzUser().toString() + " scope: "
+                        accessTokenDO.getAuthzUser().getUserId() + " scope: "
                         + Arrays.toString(accessTokenDO.getScope()));
             }
         }
@@ -239,9 +238,10 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                     addScopePrepStmt.setString(1, accessTokenId);
                     addScopePrepStmt.setString(2, scope);
                     addScopePrepStmt.setInt(3, tenantId);
-                    addScopePrepStmt.execute();
+                    addScopePrepStmt.addBatch();
                 }
             }
+            addScopePrepStmt.executeBatch();
 
             if (tokenBindingAvailable) {
                 if (log.isDebugEnabled()) {
@@ -319,11 +319,11 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
         if (log.isDebugEnabled()) {
             if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
                 log.debug("Persisting access token(hashed): " + DigestUtils.sha256Hex(accessToken) + " for client: " +
-                        consumerKey + " user: " + newAccessTokenDO.getAuthzUser().toString() + " scope: " + Arrays
+                        consumerKey + " user: " + newAccessTokenDO.getAuthzUser().getUserId() + " scope: " + Arrays
                         .toString(newAccessTokenDO.getScope()));
             } else {
                 log.debug("Persisting access token for client: " + consumerKey + " user: " + newAccessTokenDO
-                        .getAuthzUser().toString() + " scope: " + Arrays.toString(newAccessTokenDO.getScope()));
+                        .getAuthzUser().getUserId() + " scope: " + Arrays.toString(newAccessTokenDO.getScope()));
             }
         }
 
@@ -339,7 +339,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
             insertAccessToken(accessToken, consumerKey, newAccessTokenDO, connection, userStoreDomain);
 
             if (isTokenCleanupFeatureEnabled && existingAccessTokenDO != null) {
-                oldTokenCleanupObject.cleanupTokenByTokenId(existingAccessTokenDO.getTokenId(), connection);
+                oldTokenCleanupDAO.cleanupTokenByTokenId(existingAccessTokenDO.getTokenId(), connection);
             }
             IdentityDatabaseUtil.commitTransaction(connection);
             return true;
@@ -363,7 +363,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
             String scope, String tokenBindingReference, boolean includeExpiredTokens) throws IdentityOAuth2Exception {
 
         if (log.isDebugEnabled()) {
-            log.debug("Retrieving latest access token for client: " + consumerKey + " user: " + authzUser.toString()
+            log.debug("Retrieving latest access token for client: " + consumerKey + " user: " + authzUser.getUserId()
                     + " scope: " + scope);
         }
         String tenantDomain = authzUser.getTenantDomain();
@@ -500,7 +500,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                     if (log.isDebugEnabled() && IdentityUtil
                             .isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
                         log.debug("Retrieved latest access token(hashed): " + DigestUtils.sha256Hex(accessToken)
-                                + " for client: " + consumerKey + " user: " + authzUser.toString() + " scope: " + scope
+                                + " for client: " + consumerKey + " user: " + authzUser.getUserId() + " scope: " + scope
                                 + " token binding reference: " + tokenBindingReference);
                     }
                     return accessTokenDO;
@@ -526,7 +526,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
 
         if (log.isDebugEnabled()) {
             log.debug("Retrieving latest " + (active ? " active" : " non active") + " access token for user: " +
-                    authzUser.toString() + " client: " + consumerKey + " scope: " + scope);
+                    authzUser.getUserId() + " client: " + consumerKey + " scope: " + scope);
         }
         String tenantDomain = authzUser.getTenantDomain();
         int tenantId = OAuth2Util.getTenantId(tenantDomain);
@@ -1042,7 +1042,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                 OAuth2TokenUtil.postUpdateAccessToken(tokenId, tokenState);
 
                 if (isTokenCleanupFeatureEnabled && !OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE.equals(tokenState)) {
-                    oldTokenCleanupObject.cleanupTokenByTokenId(tokenId, connection);
+                    oldTokenCleanupDAO.cleanupTokenByTokenId(tokenId, connection);
                 }
 
                 IdentityDatabaseUtil.commitTransaction(connection);
@@ -1196,7 +1196,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                 OAuth2TokenUtil.postUpdateAccessTokens(Arrays.asList(tokens), OAuthConstants.TokenStates.
                         TOKEN_STATE_REVOKED);
                 if (isTokenCleanupFeatureEnabled) {
-                    oldTokenCleanupObject.cleanupTokensInBatch(oldTokens, connection);
+                    oldTokenCleanupDAO.cleanupTokensInBatch(oldTokens, connection);
                 }
             } catch (SQLException e) {
                 IdentityDatabaseUtil.rollbackTransaction(connection);
@@ -1225,7 +1225,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                 OAuth2TokenUtil.postUpdateAccessTokens(Arrays.asList(tokens), OAuthConstants.TokenStates.
                         TOKEN_STATE_REVOKED);
                 if (isTokenCleanupFeatureEnabled) {
-                    oldTokenCleanupObject.cleanupTokenByTokenValue(
+                    oldTokenCleanupDAO.cleanupTokenByTokenValue(
                             getHashingPersistenceProcessor().getProcessedAccessTokenIdentifier(tokens[0]), connection);
                 }
             } catch (SQLException e) {
@@ -1300,7 +1300,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
 
             if (isTokenCleanupFeatureEnabled) {
                 for (String token : tokens) {
-                    oldTokenCleanupObject.cleanupTokenByTokenValue(
+                    oldTokenCleanupDAO.cleanupTokenByTokenValue(
                             getHashingPersistenceProcessor().getProcessedAccessTokenIdentifier(token), connection);
                 }
             }
@@ -1345,7 +1345,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                     TOKEN_STATE_REVOKED);
 
             if (isTokenCleanupFeatureEnabled && tokenId != null) {
-                    oldTokenCleanupObject.cleanupTokenByTokenId(tokenId, connection);
+                    oldTokenCleanupDAO.cleanupTokenByTokenId(tokenId, connection);
             }
         } catch (SQLException e) {
             IdentityDatabaseUtil.rollbackTransaction(connection);
@@ -1366,7 +1366,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
     public Set<String> getAccessTokensByUser(AuthenticatedUser authenticatedUser) throws IdentityOAuth2Exception {
 
         if (log.isDebugEnabled()) {
-            log.debug("Retrieving access tokens of user: " + authenticatedUser.toString());
+            log.debug("Retrieving access tokens of user: " + authenticatedUser.getUserId());
         }
 
         boolean isIdTokenIssuedForClientCredentialsGrant = isIdTokenIssuedForApplicationTokens();
@@ -1375,9 +1375,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
         ResultSet rs;
         Set<String> accessTokens = new HashSet<>();
         try {
-            String sqlQuery = OAuth2Util.getTokenPartitionedSqlByUserId(SQLQueries.GET_ACCESS_TOKEN_BY_AUTHZUSER,
-                    authenticatedUser.toString());
-            ps = connection.prepareStatement(sqlQuery);
+            ps = connection.prepareStatement(SQLQueries.GET_ACCESS_TOKEN_BY_AUTHZUSER);
             ps.setString(1, authenticatedUser.getUserId());
             ps.setInt(2, OAuth2Util.getTenantId(authenticatedUser.getTenantDomain()));
             ps.setString(3, OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE);
@@ -1423,7 +1421,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
             throws IdentityOAuth2Exception {
 
         if (log.isDebugEnabled()) {
-            log.debug("Retrieving access tokens of user: " + authenticatedUser.toString());
+            log.debug("Retrieving access tokens of user: " + authenticatedUser.getUserId());
         }
 
         Connection connection = IdentityDatabaseUtil.getDBConnection();
@@ -1431,9 +1429,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
         ResultSet rs;
         Set<AccessTokenDO> accessTokens;
         try {
-            String sqlQuery = OAuth2Util.getTokenPartitionedSqlByUserId(
-                    SQLQueries.GET_OPEN_ID_ACCESS_TOKEN_DATA_BY_AUTHZUSER, authenticatedUser.toString());
-            ps = connection.prepareStatement(sqlQuery);
+            ps = connection.prepareStatement(SQLQueries.GET_OPEN_ID_ACCESS_TOKEN_DATA_BY_AUTHZUSER);
             ps.setString(1, authenticatedUser.getUserId());
             ps.setInt(2, OAuth2Util.getTenantId(authenticatedUser.getTenantDomain()));
             ps.setString(3, OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE);
@@ -1704,11 +1700,11 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
             if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
                 log.debug("Invalidating access token with id: " + oldAccessTokenId + " and creating new access token" +
                         "(hashed): " + DigestUtils.sha256Hex(accessTokenDO.getAccessToken()) + " for client: " +
-                        consumerKey + " user: " + accessTokenDO.getAuthzUser().toString() + " scope: " + Arrays
+                        consumerKey + " user: " + accessTokenDO.getAuthzUser().getUserId() + " scope: " + Arrays
                         .toString(accessTokenDO.getScope()));
             } else {
                 log.debug("Invalidating and creating new access token for client: " + consumerKey + " user: " +
-                        accessTokenDO.getAuthzUser().toString() + " scope: "
+                        accessTokenDO.getAuthzUser().getUserId() + " scope: "
                         + Arrays.toString(accessTokenDO.getScope()));
             }
         }
@@ -1726,7 +1722,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
             updateTokenIdIfAutzCodeGrantType(oldAccessTokenId, accessTokenDO.getTokenId(), connection);
 
             if (isTokenCleanupFeatureEnabled && oldAccessTokenId != null) {
-                oldTokenCleanupObject.cleanupTokenByTokenId(oldAccessTokenId, connection);
+                oldTokenCleanupDAO.cleanupTokenByTokenId(oldAccessTokenId, connection);
             }
             IdentityDatabaseUtil.commitTransaction(connection);
 
@@ -2240,7 +2236,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
 
         if (log.isDebugEnabled()) {
             log.debug("Retrieving " + (includeExpiredTokens ? " active" : " all ") + " latest " + limit + " access " +
-                    "token for user: " + authzUser.toString() + " client: " + consumerKey + " scope: " + scope);
+                    "token for user: " + authzUser.getUserId() + " client: " + consumerKey + " scope: " + scope);
         }
 
         if (authzUser == null) {

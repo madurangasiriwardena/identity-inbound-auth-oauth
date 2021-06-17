@@ -87,7 +87,7 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
         respDTO.setCallbackURI(authorizationReqDTO.getCallbackUrl());
 
         String consumerKey = authorizationReqDTO.getConsumerKey();
-        String authorizedUser = authorizationReqDTO.getUser().toString();
+        String authorizedUserId = authorizationReqDTO.getUser().getUserId();
         String oAuthCacheKeyString;
 
         String responseType = oauthAuthzMsgCtx.getAuthorizationReqDTO().getResponseType();
@@ -107,13 +107,7 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
             grantType = responseType;
         }
 
-        boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authorizedUser);
-
-        if (isUsernameCaseSensitive) {
-            oAuthCacheKeyString = consumerKey + ":" + authorizedUser + ":" + scope;
-        } else {
-            oAuthCacheKeyString = consumerKey + ":" + authorizedUser.toLowerCase() + ":" + scope;
-        }
+        oAuthCacheKeyString = consumerKey + ":" + authorizedUserId + ":" + scope;
 
         OAuthCacheKey cacheKey = new OAuthCacheKey(oAuthCacheKeyString);
         String userStoreDomain = null;
@@ -136,7 +130,7 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
 
         AccessTokenDO tokenDO = null;
 
-        synchronized ((consumerKey + ":" + authorizedUser + ":" + scope).intern()) {
+        synchronized ((consumerKey + ":" + authorizedUserId + ":" + scope).intern()) {
 
             AccessTokenDO existingAccessTokenDO = null;
             // check if valid access token exists in cache
@@ -145,7 +139,7 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
                 if (existingAccessTokenDO != null) {
                     if (log.isDebugEnabled()) {
                         log.debug("Retrieved active Access Token for Client Id : " + consumerKey + ", User ID :"
-                                + authorizedUser + " and Scope : " + scope + " from cache");
+                                + authorizedUserId + " and Scope : " + scope + " from cache");
                     }
 
                     long expireTime = OAuth2Util.getTokenExpireTimeMillis(existingAccessTokenDO);
@@ -205,7 +199,7 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
                 } else {
                     if (log.isDebugEnabled()) {
                         log.debug("No active access token found in cache for Client ID : " + consumerKey + ", User "
-                                + "ID" + " : " + authorizedUser + " and Scope : " + scope);
+                                + "ID" + " : " + authorizedUserId + " and Scope : " + scope);
                     }
                 }
             }
@@ -221,7 +215,7 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
 
                     if (log.isDebugEnabled()) {
                         log.debug("Retrieved latest Access Token for Client ID : " + consumerKey + ", User ID :"
-                                + authorizedUser + " and Scope : " + scope + " from database");
+                                + authorizedUserId + " and Scope : " + scope + " from database");
                     }
 
                     long expiryTime = OAuth2Util.getTokenExpireTimeMillis(existingAccessTokenDO);
@@ -303,13 +297,13 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
                 } else {
                     if (log.isDebugEnabled()) {
                         log.debug("No access token found in database for Client ID : " + consumerKey + ", User ID : "
-                                + authorizedUser + " and Scope : " + scope);
+                                + authorizedUserId + " and Scope : " + scope);
                     }
                 }
             }
 
             if (log.isDebugEnabled()) {
-                log.debug("Issuing a new access token for client id: " + consumerKey + ", user : " + authorizedUser +
+                log.debug("Issuing a new access token for client id: " + consumerKey + ", user : " + authorizedUserId +
                         "and scope : " + scope);
             }
 

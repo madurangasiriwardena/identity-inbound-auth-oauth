@@ -145,11 +145,11 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
         if (log.isDebugEnabled()) {
             if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
                 log.debug("Persisting access token(hashed): " + DigestUtils.sha256Hex(accessTokenHash) + " for " +
-                        "client: " + consumerKey + " user: " + accessTokenDO.getAuthzUser().toString() + " scope: "
+                        "client: " + consumerKey + " user: " + accessTokenDO.getAuthzUser().getUserId() + " scope: "
                         + Arrays.toString(accessTokenDO.getScope()));
             } else {
                 log.debug("Persisting access token for client: " + consumerKey + " user: " +
-                        accessTokenDO.getAuthzUser().toString() + " scope: "
+                        accessTokenDO.getAuthzUser().getUserId() + " scope: "
                         + Arrays.toString(accessTokenDO.getScope()));
             }
         }
@@ -317,11 +317,11 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
         if (log.isDebugEnabled()) {
             if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
                 log.debug("Persisting access token(hashed): " + DigestUtils.sha256Hex(accessToken) + " for client: " +
-                        consumerKey + " user: " + newAccessTokenDO.getAuthzUser().toString() + " scope: " + Arrays
+                        consumerKey + " user: " + newAccessTokenDO.getAuthzUser().getUserId() + " scope: " + Arrays
                         .toString(newAccessTokenDO.getScope()));
             } else {
                 log.debug("Persisting access token for client: " + consumerKey + " user: " + newAccessTokenDO
-                        .getAuthzUser().toString() + " scope: " + Arrays.toString(newAccessTokenDO.getScope()));
+                        .getAuthzUser().getUserId() + " scope: " + Arrays.toString(newAccessTokenDO.getScope()));
             }
         }
 
@@ -361,9 +361,10 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                                               String scope, String tokenBindingReference, boolean includeExpiredTokens) throws IdentityOAuth2Exception {
 
         if (log.isDebugEnabled()) {
-            log.debug("Retrieving latest access token for client: " + consumerKey + " user: " + authzUser.toString()
+            log.debug("Retrieving latest access token for client: " + consumerKey + " user: " + authzUser.getUserId()
                     + " scope: " + scope);
         }
+        //TODO find a way to get the case sensitivity of the user store based on the user id
         boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authzUser.toString());
         String tenantDomain = authzUser.getTenantDomain();
         int tenantId = OAuth2Util.getTenantId(tenantDomain);
@@ -507,7 +508,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                     if (log.isDebugEnabled() && IdentityUtil
                             .isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
                         log.debug("Retrieved latest access token(hashed): " + DigestUtils.sha256Hex(accessToken)
-                                + " for client: " + consumerKey + " user: " + authzUser.toString() + " scope: " + scope
+                                + " for client: " + consumerKey + " user: " + authzUser.getUserId() + " scope: " + scope
                                 + " token binding reference: " + tokenBindingReference);
                     }
                     return accessTokenDO;
@@ -533,7 +534,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
 
         if (log.isDebugEnabled()) {
             log.debug("Retrieving latest " + (active ? " active" : " non active") + " access token for user: " +
-                    authzUser.toString() + " client: " + consumerKey + " scope: " + scope);
+                    authzUser.getUserId() + " client: " + consumerKey + " scope: " + scope);
         }
         boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authzUser.toString());
         String tenantDomain = authzUser.getTenantDomain();
@@ -1354,6 +1355,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
         try {
+            //TODO this can be a problem.
             String sqlQuery = OAuth2Util.getTokenPartitionedSqlByUserId(SQLQueries.REVOKE_ACCESS_TOKEN_BY_TOKEN_ID,
                     userId);
             ps = connection.prepareStatement(sqlQuery);
@@ -1391,7 +1393,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
     public Set<String> getAccessTokensByUser(AuthenticatedUser authenticatedUser) throws IdentityOAuth2Exception {
 
         if (log.isDebugEnabled()) {
-            log.debug("Retrieving access tokens of user: " + authenticatedUser.toString());
+            log.debug("Retrieving access tokens of user: " + authenticatedUser.getUserId());
         }
 
         String accessTokenStoreTable = OAuthConstants.ACCESS_TOKEN_STORE_TABLE;
@@ -1746,11 +1748,11 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
             if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
                 log.debug("Invalidating access token with id: " + oldAccessTokenId + " and creating new access token" +
                         "(hashed): " + DigestUtils.sha256Hex(accessTokenDO.getAccessToken()) + " for client: " +
-                        consumerKey + " user: " + accessTokenDO.getAuthzUser().toString() + " scope: " + Arrays
+                        consumerKey + " user: " + accessTokenDO.getAuthzUser().getUserId() + " scope: " + Arrays
                         .toString(accessTokenDO.getScope()));
             } else {
                 log.debug("Invalidating and creating new access token for client: " + consumerKey + " user: " +
-                        accessTokenDO.getAuthzUser().toString() + " scope: "
+                        accessTokenDO.getAuthzUser().getUserId() + " scope: "
                         + Arrays.toString(accessTokenDO.getScope()));
             }
         }

@@ -78,10 +78,10 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
         if (log.isDebugEnabled()) {
             if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.AUTHORIZATION_CODE)) {
                 log.debug("Persisting authorization code (hashed): " + DigestUtils.sha256Hex(authzCode) + " for " +
-                        "client: " + consumerKey + " user: " + authzCodeDO.getAuthorizedUser().toString());
+                        "client: " + consumerKey + " user: " + authzCodeDO.getAuthorizedUser().getUserId());
             } else {
                 log.debug("Persisting authorization code for client: " + consumerKey + " user: " + authzCodeDO
-                        .getAuthorizedUser().toString());
+                        .getAuthorizedUser().getUserId());
             }
         }
         Connection connection = IdentityDatabaseUtil.getDBConnection();
@@ -91,9 +91,9 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
         try {
             String sql;
             if (OAuth2ServiceComponentHolder.isIDPIdColumnEnabled()) {
-                sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.STORE_AUTHORIZATION_CODE_WITH_PKCE_IDP_NAME;
+                sql = SQLQueries.STORE_AUTHORIZATION_CODE_WITH_PKCE_IDP_NAME;
             } else {
-                sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.STORE_AUTHORIZATION_CODE_WITH_PKCE;
+                sql = SQLQueries.STORE_AUTHORIZATION_CODE_WITH_PKCE;
             }
             prepStmt = connection.prepareStatement(sql);
 
@@ -146,7 +146,7 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
                             .append(DigestUtils.sha256Hex(authzCodeDO.getAuthorizationCode()))
                             .append(" client: ")
                             .append(authzCodeDO.getConsumerKey()).append(" user: ")
-                            .append(authzCodeDO.getAuthorizedUser().toString())
+                            .append(authzCodeDO.getAuthorizedUser().getUserId())
                             .append("\n");
                 }
                 log.debug(stringBuilder.toString());
@@ -155,14 +155,14 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
                 for (AuthzCodeDO authzCodeDO : authzCodeDOs) {
                     stringBuilder.append("Deactivating authorization code client: ")
                             .append(authzCodeDO.getConsumerKey()).append(" user: ")
-                            .append(authzCodeDO.getAuthorizedUser().toString())
+                            .append(authzCodeDO.getAuthorizedUser().getUserId())
                             .append("\n");
                 }
                 log.debug(stringBuilder.toString());
             }
         }
         try {
-            prepStmt = connection.prepareStatement(org.wso2.carbon.identity.oauth2.dao.SQLQueries.DEACTIVATE_AUTHZ_CODE_AND_INSERT_CURRENT_TOKEN);
+            prepStmt = connection.prepareStatement(SQLQueries.DEACTIVATE_AUTHZ_CODE_AND_INSERT_CURRENT_TOKEN);
             for (AuthzCodeDO authzCodeDO : authzCodeDOs) {
                 prepStmt.setString(1, authzCodeDO.getOauthTokenId());
                 prepStmt.setString(2, getHashingPersistenceProcessor()
@@ -202,9 +202,9 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
 
             String sql;
             if (OAuth2ServiceComponentHolder.isIDPIdColumnEnabled()) {
-                sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.VALIDATE_AUTHZ_CODE_WITH_PKCE_IDP_NAME;
+                sql = SQLQueries.VALIDATE_AUTHZ_CODE_WITH_PKCE_IDP_NAME;
             } else {
-                sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.VALIDATE_AUTHZ_CODE_WITH_PKCE;
+                sql = SQLQueries.VALIDATE_AUTHZ_CODE_WITH_PKCE;
             }
             prepStmt = connection.prepareStatement(sql);
             prepStmt.setString(1, getPersistenceProcessor().getProcessedClientId(consumerKey));
@@ -297,13 +297,10 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
             }
         }
 
-        String authCodeStoreTable = OAuthConstants.AUTHORIZATION_CODE_STORE_TABLE;
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement prepStmt = null;
         try {
-            String sqlQuery = org.wso2.carbon.identity.oauth2.dao.SQLQueries.UPDATE_AUTHORIZATION_CODE_STATE.replace(IDN_OAUTH2_AUTHORIZATION_CODE,
-                    authCodeStoreTable);
-            prepStmt = connection.prepareStatement(sqlQuery);
+            prepStmt = connection.prepareStatement(SQLQueries.UPDATE_AUTHORIZATION_CODE_STATE);
             prepStmt.setString(1, newState);
             prepStmt.setString(2, getHashingPersistenceProcessor().getProcessedAuthzCode(authzCode));
             prepStmt.execute();
@@ -338,7 +335,7 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
         PreparedStatement prepStmt = null;
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         try {
-            prepStmt = connection.prepareStatement(org.wso2.carbon.identity.oauth2.dao.SQLQueries.DEACTIVATE_AUTHZ_CODE_AND_INSERT_CURRENT_TOKEN);
+            prepStmt = connection.prepareStatement(SQLQueries.DEACTIVATE_AUTHZ_CODE_AND_INSERT_CURRENT_TOKEN);
             prepStmt.setString(1, authzCodeDO.getOauthTokenId());
             prepStmt.setString(2,
                     getHashingPersistenceProcessor().getProcessedAuthzCode(authzCodeDO.getAuthorizationCode()));
@@ -376,7 +373,7 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
         ResultSet rs = null;
         Set<String> authorizationCodes = new HashSet<>();
         try {
-            String sqlQuery = org.wso2.carbon.identity.oauth2.dao.SQLQueries.GET_AUTHORIZATION_CODES_BY_AUTHZUSER;
+            String sqlQuery = SQLQueries.GET_AUTHORIZATION_CODES_BY_AUTHZUSER;
 
             ps = connection.prepareStatement(sqlQuery);
             ps.setString(1, authenticatedUser.getUserId());
@@ -420,7 +417,7 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
             IdentityOAuth2Exception {
 
         if (log.isDebugEnabled()) {
-            log.debug("Retrieving authorization codes of user: " + authenticatedUser.toString());
+            log.debug("Retrieving authorization codes of user: " + authenticatedUser.getUserId());
         }
 
         Connection connection = IdentityDatabaseUtil.getDBConnection();
@@ -432,7 +429,7 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
         String userStoreDomain = authenticatedUser.getUserStoreDomain();
         try {
             //TODO update the query to have idp name.
-            String sqlQuery = org.wso2.carbon.identity.oauth2.dao.SQLQueries.GET_OPEN_ID_AUTHORIZATION_CODE_DATA_BY_AUTHZUSER;
+            String sqlQuery = SQLQueries.GET_OPEN_ID_AUTHORIZATION_CODE_DATA_BY_AUTHZUSER;
 
             ps = connection.prepareStatement(sqlQuery);
             ps.setString(1, authzUserId);
@@ -492,7 +489,7 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
         ResultSet rs = null;
         Set<String> authorizationCodes = new HashSet<>();
         try {
-            String sqlQuery = org.wso2.carbon.identity.oauth2.dao.SQLQueries.GET_AUTHORIZATION_CODES_FOR_CONSUMER_KEY;
+            String sqlQuery = SQLQueries.GET_AUTHORIZATION_CODES_FOR_CONSUMER_KEY;
             ps = connection.prepareStatement(sqlQuery);
             ps.setString(1, consumerKey);
             rs = ps.executeQuery();
@@ -523,7 +520,7 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
         ResultSet rs = null;
         Set<String> authorizationCodes = new HashSet<>();
         try {
-            String sqlQuery = org.wso2.carbon.identity.oauth2.dao.SQLQueries.GET_ACTIVE_AUTHORIZATION_CODES_FOR_CONSUMER_KEY;
+            String sqlQuery = SQLQueries.GET_ACTIVE_AUTHORIZATION_CODES_FOR_CONSUMER_KEY;
             ps = connection.prepareStatement(sqlQuery);
             ps.setString(1, consumerKey);
             ps.setString(2, OAuthConstants.AuthorizationCodeState.ACTIVE);
@@ -558,9 +555,9 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
         try {
             String sqlQuery;
             if (OAuth2ServiceComponentHolder.isIDPIdColumnEnabled()) {
-                sqlQuery = org.wso2.carbon.identity.oauth2.dao.SQLQueries.LIST_LATEST_AUTHZ_CODES_IN_TENANT_IDP_NAME;
+                sqlQuery = SQLQueries.LIST_LATEST_AUTHZ_CODES_IN_TENANT_IDP_NAME;
             } else {
-                sqlQuery = org.wso2.carbon.identity.oauth2.dao.SQLQueries.LIST_LATEST_AUTHZ_CODES_IN_TENANT;
+                sqlQuery = SQLQueries.LIST_LATEST_AUTHZ_CODES_IN_TENANT;
             }
             ps = connection.prepareStatement(sqlQuery);
             ps.setInt(1, tenantId);
@@ -623,9 +620,9 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
         try {
             String sqlQuery;
             if (OAuth2ServiceComponentHolder.isIDPIdColumnEnabled()) {
-                sqlQuery = org.wso2.carbon.identity.oauth2.dao.SQLQueries.LIST_LATEST_AUTHZ_CODES_IN_USER_DOMAIN_IDP_NAME;
+                sqlQuery = SQLQueries.LIST_LATEST_AUTHZ_CODES_IN_USER_DOMAIN_IDP_NAME;
             } else {
-                sqlQuery = org.wso2.carbon.identity.oauth2.dao.SQLQueries.LIST_LATEST_AUTHZ_CODES_IN_USER_DOMAIN;
+                sqlQuery = SQLQueries.LIST_LATEST_AUTHZ_CODES_IN_USER_DOMAIN;
             }
             ps = connection.prepareStatement(sqlQuery);
             ps.setInt(1, tenantId);
@@ -682,7 +679,7 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
         currentUserStoreDomain = OAuth2Util.getSanitizedUserStoreDomain(currentUserStoreDomain);
         newUserStoreDomain = OAuth2Util.getSanitizedUserStoreDomain(newUserStoreDomain);
         try {
-            String sqlQuery = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RENAME_USER_STORE_IN_AUTHORIZATION_CODES_TABLE;
+            String sqlQuery = SQLQueries.RENAME_USER_STORE_IN_AUTHORIZATION_CODES_TABLE;
             ps = connection.prepareStatement(sqlQuery);
             ps.setString(1, newUserStoreDomain);
             ps.setInt(2, tenantId);
@@ -704,7 +701,7 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
     private void addAuthorizationCodeScopes(AuthzCodeDO authzCodeDO, Connection connection, int tenantId)
             throws SQLException {
 
-        try (PreparedStatement addScopePrepStmt = connection.prepareStatement(org.wso2.carbon.identity.oauth2.dao.SQLQueries.INSERT_OAUTH2_CODE_SCOPE)) {
+        try (PreparedStatement addScopePrepStmt = connection.prepareStatement(SQLQueries.INSERT_OAUTH2_CODE_SCOPE)) {
             String authzCodeId = authzCodeDO.getAuthzCodeId();
 
             if (authzCodeDO.getScope() != null && authzCodeDO.getScope().length > 0) {
@@ -723,7 +720,7 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
             throws SQLException {
 
         List<String> scopes = new ArrayList<>();
-        try (PreparedStatement scopePrepStmt = connection.prepareStatement(org.wso2.carbon.identity.oauth2.dao.SQLQueries.GET_OAUTH2_CODE_SCOPE)) {
+        try (PreparedStatement scopePrepStmt = connection.prepareStatement(SQLQueries.GET_OAUTH2_CODE_SCOPE)) {
             scopePrepStmt.setString(1, codeId);
             scopePrepStmt.setInt(2, tenantId);
             try (ResultSet scopesResultSet = scopePrepStmt.executeQuery()) {
@@ -746,7 +743,7 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
         PreparedStatement prepStmt = null;
         ResultSet resultSet = null;
         try {
-            String sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_AUTHZ_CODE_BY_CODE_ID;
+            String sql = SQLQueries.RETRIEVE_AUTHZ_CODE_BY_CODE_ID;
 
             prepStmt = connection.prepareStatement(sql);
             prepStmt.setString(1, codeId);
@@ -778,7 +775,7 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
         PreparedStatement prepStmt = null;
         ResultSet resultSet = null;
         try {
-            String sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_CODE_ID_BY_AUTHORIZATION_CODE;
+            String sql = SQLQueries.RETRIEVE_CODE_ID_BY_AUTHORIZATION_CODE;
 
             prepStmt = connection.prepareStatement(sql);
             prepStmt.setString(1, getHashingPersistenceProcessor().getProcessedAuthzCode(authzCode));

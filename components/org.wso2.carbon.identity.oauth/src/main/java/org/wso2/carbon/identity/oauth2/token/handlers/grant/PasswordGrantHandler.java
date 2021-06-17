@@ -194,6 +194,7 @@ public class PasswordGrantHandler extends AbstractAuthorizationGrantHandler {
     private boolean validateUserCredentials(OAuth2AccessTokenReqDTO tokenReq, ServiceProvider serviceProvider) throws
             IdentityOAuth2Exception {
 
+        //TODO fix
         boolean authenticated;
         boolean isPublishPasswordGrantLoginEnabled = Boolean.parseBoolean(
                 IdentityUtil.getProperty(PUBLISH_PASSWORD_GRANT_LOGIN));

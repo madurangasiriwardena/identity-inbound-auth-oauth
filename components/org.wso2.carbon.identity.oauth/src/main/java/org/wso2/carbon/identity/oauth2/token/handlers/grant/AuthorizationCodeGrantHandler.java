@@ -281,7 +281,7 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
 
     private void revokeExistingAccessTokens(String tokenId, AuthzCodeDO authzCodeDO) throws IdentityOAuth2Exception {
         OAuthTokenPersistenceFactory.getInstance().getAccessTokenDAO().revokeAccessToken(tokenId, authzCodeDO
-                .getAuthorizedUser().toString());
+                .getAuthorizedUser().getUserId());
 
         if (log.isDebugEnabled()) {
             if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.AUTHORIZATION_CODE)) {

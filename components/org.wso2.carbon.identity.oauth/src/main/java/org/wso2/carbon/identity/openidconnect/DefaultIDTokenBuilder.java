@@ -47,6 +47,7 @@ import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
+import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.IDTokenValidationFailureException;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
@@ -59,6 +60,8 @@ import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.openidconnect.internal.OpenIDConnectServiceComponentHolder;
 import org.wso2.carbon.user.core.UserStoreException;
 import org.wso2.carbon.user.core.UserStoreManager;
+import org.wso2.carbon.user.core.common.AbstractUserStoreManager;
+import org.wso2.carbon.user.core.service.RealmService;
 import org.wso2.carbon.user.core.util.UserCoreUtil;
 
 import java.util.ArrayList;
@@ -435,19 +438,19 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
     private String getSubjectClaimForLocalUser(ServiceProvider serviceProvider,
                                                AuthenticatedUser authorizedUser) throws IdentityOAuth2Exception {
         String subject;
-        String username = authorizedUser.getUserName();
+        String userId = authorizedUser.getUserId();
         String userStoreDomain = authorizedUser.getUserStoreDomain();
         String userTenantDomain = authorizedUser.getTenantDomain();
 
         String subjectClaimUri = getSubjectClaimUriInLocalDialect(serviceProvider);
         if (StringUtils.isNotBlank(subjectClaimUri)) {
-            String fullQualifiedUsername = authorizedUser.toFullQualifiedUsername();
             try {
                 subject = getSubjectClaimFromUserStore(subjectClaimUri, authorizedUser);
                 if (StringUtils.isBlank(subject)) {
                     // Set username as the subject claim since we have no other option
-                    subject = username;
-                    log.warn("Cannot find subject claim: " + subjectClaimUri + " for user:" + fullQualifiedUsername
+                    subject = userId;
+                    log.warn("Cannot find subject claim: " + subjectClaimUri + " for user:"
+                            + authorizedUser.getUserId()
                             + ". Defaulting to username: " + subject + " as the subject identifier.");
                 }
                 // Get the subject claim in the correct format (ie. tenantDomain or userStoreDomain appended)
@@ -456,13 +459,13 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
                 String error = "Error occurred while getting user claim for user: " + authorizedUser + ", claim: " +
                         subjectClaimUri;
                 throw new IdentityOAuth2Exception(error, e);
-            } catch (UserStoreException e) {
+            } catch (org.wso2.carbon.user.api.UserStoreException e) {
                 String error = "Error occurred while getting subject claim: " + subjectClaimUri + " for user: "
-                        + fullQualifiedUsername;
+                        + authorizedUser.getUserId();
                 throw new IdentityOAuth2Exception(error, e);
             }
         } else {
-            subject = getFormattedSubjectClaim(serviceProvider, username, userStoreDomain, userTenantDomain);
+            subject = getFormattedSubjectClaim(serviceProvider, userId, userStoreDomain, userTenantDomain);
             if (log.isDebugEnabled()) {
                 log.debug("No subject claim defined for service provider: " + serviceProvider.getApplicationName()
                         + ". Using username as the subject claim.");
@@ -472,15 +475,16 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
     }
 
     private String getSubjectClaimFromUserStore(String subjectClaimUri, AuthenticatedUser authenticatedUser)
-            throws UserStoreException, IdentityException {
+            throws org.wso2.carbon.user.api.UserStoreException, IdentityException {
 
-        UserStoreManager userStoreManager = IdentityTenantUtil
-                .getRealm(authenticatedUser.getTenantDomain(), authenticatedUser.toFullQualifiedUsername())
-                .getUserStoreManager();
+        RealmService realmService = OAuthComponentServiceHolder.getInstance().getRealmService();
+        int tenantId = realmService.getTenantManager().getTenantId(authenticatedUser.getTenantDomain());
+
+        AbstractUserStoreManager userStoreManager
+                = (AbstractUserStoreManager) realmService.getTenantUserRealm(tenantId).getUserStoreManager();
 
         return userStoreManager
-                .getSecondaryUserStoreManager(authenticatedUser.getUserStoreDomain())
-                .getUserClaimValue(authenticatedUser.getUserName(), subjectClaimUri, null);
+                .getUserClaimValueWithID(authenticatedUser.getUserId(), subjectClaimUri, null);
     }
 
     private String getSubjectClaimUriInLocalDialect(ServiceProvider serviceProvider) {

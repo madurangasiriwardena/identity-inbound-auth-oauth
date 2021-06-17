@@ -224,7 +224,7 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
     private void removeIfCached(OAuth2AccessTokenReqDTO tokenReq, RefreshTokenValidationDataDO validationBean) {
 
         if (cacheEnabled) {
-            clearCache(tokenReq.getClientId(), validationBean.getAuthorizedUser().toString(),
+            clearCache(tokenReq.getClientId(), validationBean.getAuthorizedUser().getUserId(),
                     validationBean.getScope(), validationBean.getAccessToken(),
                     validationBean.getAuthorizedUser().getFederatedIdPName(),
                     validationBean.getTokenBindingReference());
@@ -323,7 +323,7 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         if (isHashDisabled && cacheEnabled) {
             // Remove old access token from the OAuthCache
             String scope = OAuth2Util.buildScopeString(tokReqMsgCtx.getScope());
-            String authorizedUser = tokReqMsgCtx.getAuthorizedUser().toString();
+            String authorizedUser = tokReqMsgCtx.getAuthorizedUser().getUserId();
             String authenticatedIDP = tokReqMsgCtx.getAuthorizedUser().getFederatedIdPName();
             String cacheKeyString = buildCacheKeyStringForToken(clientId, scope, authorizedUser,
                     authenticatedIDP, oldAccessToken.getTokenBindingReference());

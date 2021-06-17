@@ -319,8 +319,16 @@ public class JDBCPermissionBasedInternalScopeValidator {
     private String[] getAllowedUIResourcesOfUser(AuthenticatedUser authenticatedUser,
                                                  AuthorizationManager authorizationManager) throws UserStoreException {
 
-        String[] allowedUIResourcesForUser = authorizationManager.getAllowedUIResourcesForUser(IdentityUtil
-                .addDomainToName(authenticatedUser.getUserName(), authenticatedUser.getUserStoreDomain()), "/");
+//        String[] allowedUIResourcesForUser = authorizationManager.getAllowedUIResourcesForUser(IdentityUtil
+//                .addDomainToName(authenticatedUser.getUserName(), authenticatedUser.getUserStoreDomain()), "/");
+
+        String username = authenticatedUser.getUserName();
+        if (username == null) {
+            username = OAuth2Util
+                    .resolveUsernameFromUserId(authenticatedUser.getTenantDomain(), authenticatedUser.getUserId());
+        }
+        String[] allowedUIResourcesForUser =
+                authorizationManager.getAllowedUIResourcesForUser(username, "/");
         return (String[]) ArrayUtils.add(allowedUIResourcesForUser, EVERYONE_PERMISSION);
     }
 

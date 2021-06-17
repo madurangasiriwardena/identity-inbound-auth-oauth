@@ -22,8 +22,12 @@ package org.wso2.carbon.identity.oauth2.dao;
 
 import org.wso2.carbon.identity.openidconnect.dao.CacheBackedScopeClaimMappingDAOImpl;
 import org.wso2.carbon.identity.openidconnect.dao.RequestObjectDAO;
-import org.wso2.carbon.identity.openidconnect.dao.RequestObjectDAOImpl;
+import org.wso2.carbon.identity.openidconnect.dao.v2.RequestObjectDAOImpl;
 import org.wso2.carbon.identity.openidconnect.dao.ScopeClaimMappingDAO;
+import org.wso2.carbon.identity.oauth2.dao.v2.AccessTokenDAOImpl;
+import org.wso2.carbon.identity.oauth2.dao.v2.TokenManagementDAOImpl;
+import org.wso2.carbon.identity.oauth2.dao.v2.AuthorizationCodeDAOImpl;
+import org.wso2.carbon.identity.oauth2.dao.v2.TokenBindingMgtDAOImpl;
 
 /**
  * OAUth token persistence factory.

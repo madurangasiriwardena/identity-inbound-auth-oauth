@@ -912,11 +912,12 @@ public class EndpointUtil {
 
     private static String getUserIdOfAuthenticatedUser(AuthenticatedUser user) throws OAuthSystemException {
 
-        if (!user.isFederatedUser()) {
-            return resolveLocalUserUID(user);
-        } else {
-            return resolveFederatedUserUID(user);
-        }
+//        if (!user.isFederatedUser()) {
+//            return resolveLocalUserUID(user);
+//        } else {
+//            return resolveFederatedUserUID(user);
+//        }
+        return user.getUserId();
     }
 
     private static String resolveLocalUserUID(AuthenticatedUser user) throws OAuthSystemException {

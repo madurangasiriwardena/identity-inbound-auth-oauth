@@ -739,6 +739,7 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
         authenticatedUser.setUserName(user.getUserName());
         authenticatedUser.setTenantDomain(user.getTenantDomain());
         authenticatedUser.setUserStoreDomain(user.getUserStoreDomain());
+        authenticatedUser.setUserId(user.getUserId());
         return authenticatedUser;
     }
 

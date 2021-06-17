@@ -1925,6 +1925,7 @@ public class OAuth2AuthzEndpoint {
 
         diagnosticLog.info("In user authorization flow.");
         OAuth2Parameters oauth2Params = getOauth2Params(oAuthMessage);
+        //TODO debug and verifiy if id is there.
         AuthenticatedUser authenticatedUser = getLoggedInUser(oAuthMessage);
         boolean hasUserApproved = isUserAlreadyApproved(oauth2Params, authenticatedUser);
         if (hasUserApproved) {

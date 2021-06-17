@@ -109,7 +109,8 @@ public class OpenIDConnectUserRPStore {
     private int getTenantId(AuthenticatedUser user, OAuthAppDO oauthApp) throws OAuthSystemException {
 
         int tenantId;
-        if (user.getUserName() != null) {
+        //TODO why this check?
+        if (user.getUserId() != null) {
             tenantId = IdentityTenantUtil.getTenantId(user.getTenantDomain());
         } else {
             tenantId = IdentityTenantUtil.getTenantId(OAuth2Util.getTenantDomainOfOauthApp(oauthApp));

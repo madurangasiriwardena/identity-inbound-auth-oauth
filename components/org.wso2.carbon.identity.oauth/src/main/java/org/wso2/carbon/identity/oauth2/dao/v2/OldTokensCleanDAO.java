@@ -47,9 +47,9 @@ public class OldTokensCleanDAO {
             if (OAuthServerConfiguration.getInstance().useRetainOldAccessTokens()) {
                 String sql;
                 if (OAuth2ServiceComponentHolder.isIDPIdColumnEnabled()) {
-                    sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_AND_STORE_IN_AUDIT_WITH_IDP_NAME;
+                    sql = SQLQueries.RETRIEVE_AND_STORE_IN_AUDIT_WITH_IDP_NAME;
                 } else {
-                    sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_AND_STORE_IN_AUDIT;
+                    sql = SQLQueries.RETRIEVE_AND_STORE_IN_AUDIT;
                 }
                 PreparedStatement prepStmt = connection.prepareStatement(sql);
                 prepStmt.setTimestamp(1, new Timestamp(System.currentTimeMillis()));
@@ -69,9 +69,9 @@ public class OldTokensCleanDAO {
 
         String sql;
         if (OAuth2ServiceComponentHolder.isIDPIdColumnEnabled()) {
-            sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_OLD_TOKEN_BY_TOKEN_HASH_WITH_IDP_NAME;
+            sql = SQLQueries.RETRIEVE_OLD_TOKEN_BY_TOKEN_HASH_WITH_IDP_NAME;
         } else {
-            sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_OLD_TOKEN_BY_TOKEN_HASH;
+            sql = SQLQueries.RETRIEVE_OLD_TOKEN_BY_TOKEN_HASH;
         }
 
         PreparedStatement prepStmt = connection.prepareStatement(sql);
@@ -112,9 +112,9 @@ public class OldTokensCleanDAO {
 
         String sql;
         if (OAuth2ServiceComponentHolder.isIDPIdColumnEnabled()) {
-            sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.STORE_OLD_TOKEN_IN_AUDIT_WITH_IDP_NAME;
+            sql = SQLQueries.STORE_OLD_TOKEN_IN_AUDIT_WITH_IDP_NAME;
         } else {
-            sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.STORE_OLD_TOKEN_IN_AUDIT;
+            sql = SQLQueries.STORE_OLD_TOKEN_IN_AUDIT;
         }
 
         PreparedStatement insertintoaudittable = connection.prepareStatement(sql);

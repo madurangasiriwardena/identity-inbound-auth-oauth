@@ -75,10 +75,10 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
         if (log.isDebugEnabled()) {
             if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.AUTHORIZATION_CODE)) {
                 log.debug("Persisting authorization code (hashed): " + DigestUtils.sha256Hex(authzCode) + " for " +
-                        "client: " + consumerKey + " user: " + authzCodeDO.getAuthorizedUser().toString());
+                        "client: " + consumerKey + " user: " + authzCodeDO.getAuthorizedUser().getUserId());
             } else {
                 log.debug("Persisting authorization code for client: " + consumerKey + " user: " + authzCodeDO
-                        .getAuthorizedUser().toString());
+                        .getAuthorizedUser().getUserId());
             }
         }
         Connection connection = IdentityDatabaseUtil.getDBConnection();
@@ -143,7 +143,7 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
                             .append(DigestUtils.sha256Hex(authzCodeDO.getAuthorizationCode()))
                             .append(" client: ")
                             .append(authzCodeDO.getConsumerKey()).append(" user: ")
-                            .append(authzCodeDO.getAuthorizedUser().toString())
+                            .append(authzCodeDO.getAuthorizedUser().getUserId())
                             .append("\n");
                 }
                 log.debug(stringBuilder.toString());
@@ -152,7 +152,7 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
                 for (AuthzCodeDO authzCodeDO : authzCodeDOs) {
                     stringBuilder.append("Deactivating authorization code client: ")
                             .append(authzCodeDO.getConsumerKey()).append(" user: ")
-                            .append(authzCodeDO.getAuthorizedUser().toString())
+                            .append(authzCodeDO.getAuthorizedUser().getUserId())
                             .append("\n");
                 }
                 log.debug(stringBuilder.toString());

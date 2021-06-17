@@ -173,7 +173,7 @@ public abstract class AbstractUserInfoResponseBuilder implements UserInfoRespons
             if (authenticatedUser.isFederatedUser()) {
                 subjectClaim = authenticatedUser.getAuthenticatedSubjectIdentifier();
             } else {
-                subjectClaim = authenticatedUser.getUserName();
+                subjectClaim = authenticatedUser.getUserId();
             }
         }
 

@@ -436,8 +436,8 @@ public class OAuth2Service extends AbstractAdmin {
                         OAuthUtil.clearOAuthCache(revokeRequestDTO.getConsumerKey(), accessTokenDO.getAuthzUser());
                         OAuthUtil.clearOAuthCache(accessTokenDO);
                         String scope = OAuth2Util.buildScopeString(accessTokenDO.getScope());
-                        String authorizedUser = accessTokenDO.getAuthzUser().toString();
-                        synchronized ((revokeRequestDTO.getConsumerKey() + ":" + authorizedUser + ":" + scope + ":"
+                        String userId = accessTokenDO.getAuthzUser().getUserId();
+                        synchronized ((revokeRequestDTO.getConsumerKey() + ":" + userId + ":" + scope + ":"
                                 + tokenBindingReference).intern()) {
                             OAuthTokenPersistenceFactory.getInstance().getAccessTokenDAO()
                                     .revokeAccessTokens(new String[]{accessTokenDO.getAccessToken()});
@@ -659,6 +659,7 @@ public class OAuth2Service extends AbstractAdmin {
             header.setValue(accessToken);
             respHeaders.add(header);
             header = new ResponseHeader();
+            //TODO do we need this?
             header.setKey("AuthorizedUser");
             header.setValue(authorizedUser);
             respHeaders.add(header);

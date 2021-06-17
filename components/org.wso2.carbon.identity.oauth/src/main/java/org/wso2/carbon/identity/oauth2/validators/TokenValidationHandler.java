@@ -520,6 +520,7 @@ public class TokenValidationHandler {
 
     private String getAuthzUser(AccessTokenDO accessTokenDO) throws IdentityOAuth2Exception {
 
+        //TODO check the behavior
         AuthenticatedUser user = accessTokenDO.getAuthzUser();
 
         if (user.isFederatedUser()) {

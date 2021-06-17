@@ -839,7 +839,7 @@ public class OAuthAdminServiceImpl {
                 OAuthCache.getInstance().clearCacheEntry(cacheKeyToken);
 
                 String scope = buildScopeString(detailToken.getScope());
-                String authorizedUser = detailToken.getAuthzUser().toString();
+                String authorizedUser = detailToken.getAuthzUser().getUserId();
                 String authenticatedIDP = detailToken.getAuthzUser().getFederatedIdPName();
                 boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authorizedUser);
                 String cacheKeyString;
@@ -871,7 +871,7 @@ public class OAuthAdminServiceImpl {
             OAuthTokenPersistenceFactory.getInstance().getTokenManagementDAO()
                     .updateAppAndRevokeTokensAndAuthzCodes(
                             consumerKey, properties, authorizationCodes.toArray(
-                                    new String[authorizationCodes.size()]), accessTokens);
+                                    new String[0]), accessTokens);
 
         } catch (IdentityOAuth2Exception | IdentityApplicationManagementException e) {
             throw handleError("Error in updating oauth app & revoking access tokens and authz " +

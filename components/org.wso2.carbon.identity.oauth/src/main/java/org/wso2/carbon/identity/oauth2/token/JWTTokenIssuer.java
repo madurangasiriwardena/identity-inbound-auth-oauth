@@ -126,7 +126,7 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
 
         if (log.isDebugEnabled()) {
             log.debug("Access token request with token request message context. Authorized user " +
-                    oAuthTokenReqMessageContext.getAuthorizedUser().toString());
+                    oAuthTokenReqMessageContext.getAuthorizedUser().getUserId());
         }
 
         try {
@@ -141,7 +141,7 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
 
         if (log.isDebugEnabled()) {
             log.debug("Access token request with authorization request message context message context. Authorized " +
-                    "user " + oAuthAuthzReqMessageContext.getAuthorizationReqDTO().getUser().toString());
+                    "user " + oAuthAuthzReqMessageContext.getAuthorizationReqDTO().getUser().getUserId());
         }
 
         try {
@@ -622,7 +622,7 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
 
         String subject;
         //TODO do something
-        String username = authorizedUser.getUserName();
+        String userId = authorizedUser.getUserId();
         String userStoreDomain = authorizedUser.getUserStoreDomain();
         String userTenantDomain = authorizedUser.getTenantDomain();
 
@@ -633,7 +633,7 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
                 subject = getSubjectClaimFromUserStore(subjectClaimUri, authorizedUser);
                 if (StringUtils.isBlank(subject)) {
                     // Set username as the subject claim since we have no other option
-                    subject = username;
+                    subject = userId;
                     log.warn("Cannot find subject claim: " + subjectClaimUri + " for user:" + fullQualifiedUsername
                             + ". Defaulting to username: " + subject + " as the subject identifier.");
                 }
@@ -649,7 +649,7 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
                 throw new IdentityOAuth2Exception(error, e);
             }
         } else {
-            subject = getFormattedSubjectClaim(serviceProvider, username, userStoreDomain, userTenantDomain);
+            subject = getFormattedSubjectClaim(serviceProvider, userId, userStoreDomain, userTenantDomain);
             if (log.isDebugEnabled()) {
                 log.debug("No subject claim defined for service provider: " + serviceProvider.getApplicationName()
                         + ". Using username as the subject claim.");

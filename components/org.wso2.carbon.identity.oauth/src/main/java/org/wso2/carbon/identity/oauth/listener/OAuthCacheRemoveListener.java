@@ -53,18 +53,11 @@ public class OAuthCacheRemoveListener extends AbstractCacheListener<OAuthCacheKe
             log.debug("OAuth cache removed for consumer id : " + accessTokenDO.getConsumerKey());
         }
 
-        String userName = accessTokenDO.getAuthzUser().toString();
-        boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(userName);
+        String userId = accessTokenDO.getAuthzUser().getUserId();
         String cacheKeyString;
-        if (isUsernameCaseSensitive) {
-            cacheKeyString = accessTokenDO.getConsumerKey() + ":" + userName + ":" +
+        cacheKeyString = accessTokenDO.getConsumerKey() + ":" + userId + ":" +
                     OAuth2Util.buildScopeString(accessTokenDO.getScope()) + ":" +
                     accessTokenDO.getAuthzUser().getFederatedIdPName();
-        } else {
-            cacheKeyString = accessTokenDO.getConsumerKey() + ":" + userName.toLowerCase() + ":" +
-                    OAuth2Util.buildScopeString(accessTokenDO.getScope()) + ":" +
-                    accessTokenDO.getAuthzUser().getFederatedIdPName();
-        }
 
         OAuthCacheKey oauthcacheKey = new OAuthCacheKey(cacheKeyString);
         OAuthCache oauthCache = OAuthCache.getInstance();

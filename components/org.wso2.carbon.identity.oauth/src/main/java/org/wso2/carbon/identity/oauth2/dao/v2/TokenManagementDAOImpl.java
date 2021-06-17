@@ -104,35 +104,35 @@ public class TokenManagementDAOImpl extends AbstractOAuthDAO implements TokenMan
                 if (driverName.contains("MySQL")
                         || driverName.contains("MariaDB")
                         || driverName.contains("H2")) {
-                    sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_IDP_NAME_MYSQL;
+                    sql = SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_IDP_NAME_MYSQL;
                 } else if (connection.getMetaData().getDatabaseProductName().contains("DB2")) {
-                    sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_IDP_NAME_DB2SQL;
+                    sql = SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_IDP_NAME_DB2SQL;
                 } else if (driverName.contains("MS SQL")
                         || driverName.contains("Microsoft")) {
-                    sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_IDP_NAME_MSSQL;
+                    sql = SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_IDP_NAME_MSSQL;
                 } else if (driverName.contains("PostgreSQL")) {
-                    sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_IDP_NAME_POSTGRESQL;
+                    sql = SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_IDP_NAME_POSTGRESQL;
                 } else if (driverName.contains("INFORMIX")) {
-                    sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_IDP_NAME_INFORMIX;
+                    sql = SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_IDP_NAME_INFORMIX;
                 } else {
-                    sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_IDP_NAME_ORACLE;
+                    sql = SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_IDP_NAME_ORACLE;
                 }
             } else {
                 if (driverName.contains("MySQL")
                         || driverName.contains("MariaDB")
                         || driverName.contains("H2")) {
-                    sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_MYSQL;
+                    sql = SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_MYSQL;
                 } else if (connection.getMetaData().getDatabaseProductName().contains("DB2")) {
-                    sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_DB2SQL;
+                    sql = SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_DB2SQL;
                 } else if (driverName.contains("MS SQL")
                         || driverName.contains("Microsoft")) {
-                    sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_MSSQL;
+                    sql = SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_MSSQL;
                 } else if (driverName.contains("PostgreSQL")) {
-                    sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_POSTGRESQL;
+                    sql = SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_POSTGRESQL;
                 } else if (driverName.contains("INFORMIX")) {
-                    sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_INFORMIX;
+                    sql = SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_INFORMIX;
                 } else {
-                    sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_ORACLE;
+                    sql = SQLQueries.RETRIEVE_ACCESS_TOKEN_VALIDATION_DATA_ORACLE;
                 }
             }
 
@@ -222,9 +222,9 @@ public class TokenManagementDAOImpl extends AbstractOAuthDAO implements TokenMan
 
         String sql;
         if (OAuth2ServiceComponentHolder.isIDPIdColumnEnabled()) {
-            sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_REFRESH_TOKEN_WITH_IDP_NAME;
+            sql = SQLQueries.RETRIEVE_REFRESH_TOKEN_WITH_IDP_NAME;
         } else {
-            sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_REFRESH_TOKEN;
+            sql = SQLQueries.RETRIEVE_REFRESH_TOKEN;
         }
 
         try {
@@ -314,9 +314,9 @@ public class TokenManagementDAOImpl extends AbstractOAuthDAO implements TokenMan
         try (Connection connection = IdentityDatabaseUtil.getDBConnection(false)) {
 
             if (connection.getMetaData().getDriverName().contains(Oauth2ScopeConstants.DataBaseType.ORACLE)) {
-                sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_SCOPE_WITH_TENANT_FOR_RESOURCE_ORACLE;
+                sql = SQLQueries.RETRIEVE_SCOPE_WITH_TENANT_FOR_RESOURCE_ORACLE;
             } else {
-                sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.RETRIEVE_SCOPE_WITH_TENANT_FOR_RESOURCE;
+                sql = SQLQueries.RETRIEVE_SCOPE_WITH_TENANT_FOR_RESOURCE;
             }
 
             try (PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -364,7 +364,7 @@ public class TokenManagementDAOImpl extends AbstractOAuthDAO implements TokenMan
         PreparedStatement ps = null;
 
         try {
-            String sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.DELETE_USER_RPS;
+            String sql = SQLQueries.DELETE_USER_RPS;
 
             ps = connection.prepareStatement(sql);
             ps.setString(1, username);
@@ -408,7 +408,7 @@ public class TokenManagementDAOImpl extends AbstractOAuthDAO implements TokenMan
         PreparedStatement ps = null;
 
         try {
-            String sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.DELETE_USER_RPS_IN_TENANT;
+            String sql = SQLQueries.DELETE_USER_RPS_IN_TENANT;
 
             ps = connection.prepareStatement(sql);
             ps.setString(1, username);
@@ -455,7 +455,7 @@ public class TokenManagementDAOImpl extends AbstractOAuthDAO implements TokenMan
         PreparedStatement ps = null;
 
         try {
-            String sql = org.wso2.carbon.identity.oauth2.dao.SQLQueries.UPDATE_TRUSTED_ALWAYS_IDN_OPENID_USER_RPS;
+            String sql = SQLQueries.UPDATE_TRUSTED_ALWAYS_IDN_OPENID_USER_RPS;
 
             ps = connection.prepareStatement(sql);
             ps.setString(1, state);
@@ -553,7 +553,7 @@ public class TokenManagementDAOImpl extends AbstractOAuthDAO implements TokenMan
             if (ArrayUtils.isNotEmpty(accessTokens)) {
                 if (OAuth2Util.checkAccessTokenPartitioningEnabled() && OAuth2Util.checkUserNameAssertionEnabled()) {
                     for (String token : accessTokens) {
-                        String sqlQuery = OAuth2Util.getTokenPartitionedSqlByToken(org.wso2.carbon.identity.oauth2.dao.SQLQueries.REVOKE_APP_ACCESS_TOKEN,
+                        String sqlQuery = OAuth2Util.getTokenPartitionedSqlByToken(SQLQueries.REVOKE_APP_ACCESS_TOKEN,
                                 token);
 
                         revokeActiveTokensStatement = connection.prepareStatement(sqlQuery);
@@ -566,7 +566,7 @@ public class TokenManagementDAOImpl extends AbstractOAuthDAO implements TokenMan
                         }
                     }
                 } else {
-                    revokeActiveTokensStatement = connection.prepareStatement(org.wso2.carbon.identity.oauth2.dao.SQLQueries.REVOKE_APP_ACCESS_TOKEN);
+                    revokeActiveTokensStatement = connection.prepareStatement(SQLQueries.REVOKE_APP_ACCESS_TOKEN);
                     revokeActiveTokensStatement.setString(1, OAuthConstants.TokenStates.TOKEN_STATE_REVOKED);
                     revokeActiveTokensStatement.setString(2, UUID.randomUUID().toString());
                     revokeActiveTokensStatement.setString(3, consumerKey);
@@ -576,7 +576,7 @@ public class TokenManagementDAOImpl extends AbstractOAuthDAO implements TokenMan
             }
 
             //Deactivate all active authorization codes
-            String sqlQuery = org.wso2.carbon.identity.oauth2.dao.SQLQueries.UPDATE_AUTHORIZATION_CODE_STATE_FOR_CONSUMER_KEY;
+            String sqlQuery = SQLQueries.UPDATE_AUTHORIZATION_CODE_STATE_FOR_CONSUMER_KEY;
             deactivateActiveCodesStatement = connection.prepareStatement(sqlQuery);
             deactivateActiveCodesStatement.setString(1, OAuthConstants.AuthorizationCodeState.REVOKED);
             deactivateActiveCodesStatement.setString(2, consumerKey);
@@ -640,7 +640,7 @@ public class TokenManagementDAOImpl extends AbstractOAuthDAO implements TokenMan
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
         try {
-            String sql = OAuth2Util.getTokenPartitionedSqlByUserStore(org.wso2.carbon.identity.oauth2.dao.SQLQueries.REVOKE_SAAS_TOKENS_OF_OTHER_TENANTS,
+            String sql = OAuth2Util.getTokenPartitionedSqlByUserStore(SQLQueries.REVOKE_SAAS_TOKENS_OF_OTHER_TENANTS,
                     userStoreDomain);
             ps = connection.prepareStatement(sql);
             ps.setString(1, OAuthConstants.TokenStates.TOKEN_STATE_REVOKED);
@@ -671,14 +671,13 @@ public class TokenManagementDAOImpl extends AbstractOAuthDAO implements TokenMan
     public Set<String> getAllTimeAuthorizedClientIds(AuthenticatedUser authzUser) throws IdentityOAuth2Exception {
 
         if (log.isDebugEnabled()) {
-            log.debug("Retrieving all authorized clients by user: " + authzUser.toString());
+            log.debug("Retrieving all authorized clients by user: " + authzUser.getUserId());
         }
 
         PreparedStatement ps = null;
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         ResultSet rs = null;
         Set<String> distinctConsumerKeys = new HashSet<>();
-        boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authzUser.toString());
         String tenantDomain = authzUser.getTenantDomain();
         String authzUserId = authzUser.getUserId();
         String userDomain = OAuth2Util.getSanitizedUserStoreDomain(authzUser.getUserStoreDomain());
@@ -686,10 +685,7 @@ public class TokenManagementDAOImpl extends AbstractOAuthDAO implements TokenMan
         try {
             int tenantId = OAuth2Util.getTenantId(tenantDomain);
 
-            String sqlQuery = OAuth2Util.getTokenPartitionedSqlByUserId(SQLQueries.
-                    GET_DISTINCT_APPS_AUTHORIZED_BY_USER_ALL_TIME, authzUser.toString());
-
-            ps = connection.prepareStatement(sqlQuery);
+            ps = connection.prepareStatement(SQLQueries.GET_DISTINCT_APPS_AUTHORIZED_BY_USER_ALL_TIME);
             ps.setString(1, authzUserId);
             ps.setInt(2, tenantId);
             ps.setString(3, userDomain);
@@ -710,7 +706,7 @@ public class TokenManagementDAOImpl extends AbstractOAuthDAO implements TokenMan
             for (String consumerKey : distinctConsumerKeys) {
                 consumerKeys.append(consumerKey).append(" ");
             }
-            log.debug("Found authorized clients " + consumerKeys.toString() + " for user: " + authzUser.toString());
+            log.debug("Found authorized clients " + consumerKeys + " for user: " + authzUser);
         }
         return distinctConsumerKeys;
     }

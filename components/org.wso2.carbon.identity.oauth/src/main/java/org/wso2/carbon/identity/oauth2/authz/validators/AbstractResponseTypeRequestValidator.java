@@ -95,6 +95,7 @@ public abstract class AbstractResponseTypeRequestValidator implements ResponseTy
 
         try {
             String appTenantDomain = OAuth2Util.getTenantDomainOfOauthApp(clientId);
+            //TODO we have retrieved the app by now
             validateRequestTenantDomain(appTenantDomain);
 
             if (StringUtils.isBlank(clientId)) {

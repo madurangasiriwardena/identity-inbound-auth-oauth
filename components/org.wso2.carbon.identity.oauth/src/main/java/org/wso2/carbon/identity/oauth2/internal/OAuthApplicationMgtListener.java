@@ -52,7 +52,7 @@ import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
-import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDAOImpl;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.dto.OAuthConsumerAppDTO;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
@@ -250,7 +250,7 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
                         oAuthAppDO.setAppOwner(new AuthenticatedUser(owner));
 
                         OAuthConsumerAppDTO oAuthConsumerAppDTO = OAuthUtil.buildConsumerAppDTO(oAuthAppDO);
-                        OAuthAppDAO dao = new OAuthAppDAO();
+                        OAuthAppDAOImpl dao = new OAuthAppDAOImpl();
 
                         String oauthConsumerKey = oAuthConsumerAppDTO.getOauthConsumerKey();
                         boolean isExistingClient = dao.isDuplicateConsumer(oauthConsumerKey);
@@ -308,7 +308,7 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
                     if (OAUTH.equals(authConfig.getInboundAuthType()) ||
                             OAUTH2.equals(authConfig.getInboundAuthType())) {
 
-                        OAuthAppDAO dao = new OAuthAppDAO();
+                        OAuthAppDAOImpl dao = new OAuthAppDAOImpl();
                         OAuthAppDO authApplication = dao.getAppInformation(authConfig.getInboundAuthKey());
                         String tokenProcessorName = OAuthServerConfiguration.getInstance().getPersistenceProcessor()
                                 .getClass().getName();
@@ -435,7 +435,7 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
             return;
         }
 
-        OAuthAppDAO dao = new OAuthAppDAO();
+        OAuthAppDAOImpl dao = new OAuthAppDAOImpl();
         try {
             dao.updateOAuthConsumerApp(serviceProvider, authenticationRequestConfigConfig.getInboundAuthKey());
         } catch (IdentityOAuthAdminException e) {
@@ -652,7 +652,7 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
                         return;
                     }
                     String inboundAuthKey = authConfig.getInboundAuthKey();
-                    OAuthAppDAO dao = new OAuthAppDAO();
+                    OAuthAppDAOImpl dao = new OAuthAppDAOImpl();
                     OAuthAppDO oAuthAppDO;
 
                     String tenantDomain = serviceProvider.getOwner().getTenantDomain();

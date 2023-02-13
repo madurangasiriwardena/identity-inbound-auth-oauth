@@ -28,7 +28,7 @@ import org.wso2.carbon.identity.common.testng.WithCarbonHome;
 import org.wso2.carbon.identity.common.testng.WithH2Database;
 import org.wso2.carbon.identity.common.testng.WithRealmService;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
-import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDAOImpl;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.event.OAuthEventInterceptor;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
@@ -103,7 +103,7 @@ public class TokenResponseTypeHandlerTest {
         accessTokenDO.setAccessToken("abcdefghijklmn");
         accessTokenDO.setAuthzUser(authenticatedUser);
 
-        new OAuthAppDAO().addOAuthApplication(oAuthAppDO);
+        new OAuthAppDAOImpl().addOAuthApplication(oAuthAppDO);
 
         OAuth2AuthorizeRespDTO auth2AuthorizeReqDTO = tokenResponseTypeHandler.
                 issue(authAuthzReqMessageContext);

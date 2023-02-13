@@ -36,7 +36,7 @@ import org.wso2.carbon.identity.oauth.common.OAuth2ErrorCodes;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
-import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDAOImpl;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.dto.OAuthAppRevocationRequestDTO;
 import org.wso2.carbon.identity.oauth.dto.OAuthConsumerAppDTO;
@@ -129,7 +129,7 @@ public class OAuthAdminServiceImpl {
         String tenantUser = MultitenantUtils.getTenantAwareUsername(loggedInUser);
         int tenantId = CarbonContext.getThreadLocalCarbonContext().getTenantId();
         String userDomain = IdentityUtil.extractDomainFromName(loggedInUser);
-        OAuthAppDAO dao = new OAuthAppDAO();
+        OAuthAppDAOImpl dao = new OAuthAppDAOImpl();
         return dao.addOAuthConsumer(UserCoreUtil.removeDomainFromName(tenantUser), tenantId, userDomain);
     }
 
@@ -156,7 +156,7 @@ public class OAuthAdminServiceImpl {
         }
 
         int tenantId = CarbonContext.getThreadLocalCarbonContext().getTenantId();
-        OAuthAppDAO dao = new OAuthAppDAO();
+        OAuthAppDAOImpl dao = new OAuthAppDAOImpl();
         OAuthAppDO[] apps = dao.getOAuthConsumerAppsOfUser(userName, tenantId);
         if (apps != null && apps.length > 0) {
             dtos = new OAuthConsumerAppDTO[apps.length];
@@ -209,7 +209,7 @@ public class OAuthAdminServiceImpl {
     public OAuthConsumerAppDTO getOAuthApplicationDataByAppName(String appName) throws IdentityOAuthAdminException {
 
         OAuthConsumerAppDTO dto;
-        OAuthAppDAO dao = new OAuthAppDAO();
+        OAuthAppDAOImpl dao = new OAuthAppDAOImpl();
         try {
             OAuthAppDO app = dao.getAppInformationByAppName(appName);
             if (app != null) {
@@ -262,7 +262,7 @@ public class OAuthAdminServiceImpl {
             }
 
             if (defaultAppOwner != null) {
-                OAuthAppDAO dao = new OAuthAppDAO();
+                OAuthAppDAOImpl dao = new OAuthAppDAOImpl();
                 if (application != null) {
                     app.setApplicationName(application.getApplicationName());
 
@@ -468,7 +468,7 @@ public class OAuthAdminServiceImpl {
 
         String tenantDomain = CarbonContext.getThreadLocalCarbonContext().getTenantDomain();
 
-        OAuthAppDAO dao = new OAuthAppDAO();
+        OAuthAppDAOImpl dao = new OAuthAppDAOImpl();
         OAuthAppDO oauthappdo;
         try {
             oauthappdo = getOAuthApp(oauthConsumerKey);
@@ -942,7 +942,7 @@ public class OAuthAdminServiceImpl {
             oAuthApplicationMgtListener.doPreRemoveOAuthApplicationData(consumerKey);
         }
 
-        OAuthAppDAO dao = new OAuthAppDAO();
+        OAuthAppDAOImpl dao = new OAuthAppDAOImpl();
         try {
             dao.removeConsumerApplication(consumerKey);
         } catch (IdentityOAuthAdminException e) {
@@ -992,7 +992,7 @@ public class OAuthAdminServiceImpl {
             LOG.debug("Deleting all OAuth Application data of the tenant: " + tenantId);
         }
 
-        OAuthAppDAO dao = new OAuthAppDAO();
+        OAuthAppDAOImpl dao = new OAuthAppDAOImpl();
         dao.removeConsumerApplicationsByTenantId(tenantId);
     }
 
@@ -1751,7 +1751,7 @@ public class OAuthAdminServiceImpl {
             return oauthApp;
         }
 
-        OAuthAppDAO dao = new OAuthAppDAO();
+        OAuthAppDAOImpl dao = new OAuthAppDAOImpl();
         oauthApp = dao.getAppInformation(consumerKey);
         if (oauthApp != null) {
             if (LOG.isDebugEnabled()) {

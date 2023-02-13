@@ -34,7 +34,7 @@ import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.core.common.AuthenticationException;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
-import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDAOImpl;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAO;
 import org.wso2.carbon.identity.oauth.dto.OAuthConsumerDTO;
@@ -63,7 +63,7 @@ import static org.testng.Assert.assertTrue;
  */
 @PowerMockIgnore({"javax.net.*", "javax.security.*", "javax.crypto.*"})
 @PrepareForTest({OAuthConsumerDAO.class, OAuthService.class, MessageContext.class, MultitenantUtils.class,
-        IdentityTenantUtil.class, OAuthAppDAO.class})
+        IdentityTenantUtil.class, OAuthAppDAOImpl.class})
 public class OAuthServiceTest extends PowerMockIdentityBaseTest {
 
     private static final Long LATEST_TIMESTAMP = new Timestamp(System.currentTimeMillis()).getTime();
@@ -87,7 +87,7 @@ public class OAuthServiceTest extends PowerMockIdentityBaseTest {
     private UserStoreManager userStoreManager;
 
     @Mock
-    private OAuthAppDAO oAuthAppDAO;
+    private OAuthAppDAOImpl oAuthAppDAO;
 
     @DataProvider(name = "testIsOAuthConsumerValid")
     public Object[][] isOAuthConsumerValidFlows() {
@@ -256,7 +256,7 @@ public class OAuthServiceTest extends PowerMockIdentityBaseTest {
 
         whenNew(OAuthConsumerDAO.class).withAnyArguments().thenReturn(oAuthConsumerDAO);
         when(oAuthConsumerDAO.getRequestToken(anyString())).thenReturn(requestTokenParams);
-        whenNew(OAuthAppDAO.class).withAnyArguments().thenReturn(oAuthAppDAO);
+        whenNew(OAuthAppDAOImpl.class).withAnyArguments().thenReturn(oAuthAppDAO);
         when(oAuthAppDAO.getAppInformation(anyString())).thenReturn(appInformation);
 
         OAuthService oAuthService = new OAuthService();

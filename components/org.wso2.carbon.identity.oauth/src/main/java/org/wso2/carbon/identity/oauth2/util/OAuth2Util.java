@@ -94,7 +94,6 @@ import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
-import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAO;
 import org.wso2.carbon.identity.oauth.dto.ScopeDTO;
@@ -2140,7 +2139,7 @@ public class OAuth2Util {
         if (oAuthAppDO != null) {
             return oAuthAppDO;
         } else {
-            oAuthAppDO = new OAuthAppDAO().getAppInformation(clientId);
+            oAuthAppDO = OAuthComponentServiceHolder.getInstance().getoAuthAppDAO().getAppInformation(clientId);
             if (oAuthAppDO != null) {
                 AppInfoCache.getInstance().addToCache(clientId, oAuthAppDO);
             }

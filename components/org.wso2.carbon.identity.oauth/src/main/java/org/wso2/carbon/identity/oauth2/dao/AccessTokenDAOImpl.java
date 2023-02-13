@@ -200,53 +200,49 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                 insertTokenPrepStmt.setString(2, accessTokenDO.getRefreshToken());
             }
 
-            insertTokenPrepStmt.setString(3, accessTokenDO.getAuthzUser().getUserName());
+            insertTokenPrepStmt.setString(3, getPersistenceProcessor().getProcessedClientId(consumerKey));
+            insertTokenPrepStmt.setString(4, accessTokenDO.getAuthzUser().getUserName());
             int tenantId = OAuth2Util.getTenantId(accessTokenDO.getAuthzUser().getTenantDomain());
-            insertTokenPrepStmt.setInt(4, tenantId);
-            insertTokenPrepStmt.setString(5, OAuth2Util.getSanitizedUserStoreDomain(userDomain));
+            insertTokenPrepStmt.setInt(5, tenantId);
+            insertTokenPrepStmt.setString(6, OAuth2Util.getSanitizedUserStoreDomain(userDomain));
             insertTokenPrepStmt
-                    .setTimestamp(6, accessTokenDO.getIssuedTime(), Calendar.getInstance(TimeZone.getTimeZone(UTC)));
-            insertTokenPrepStmt.setTimestamp(7, accessTokenDO.getRefreshTokenIssuedTime(), Calendar.getInstance(TimeZone
+                    .setTimestamp(7, accessTokenDO.getIssuedTime(), Calendar.getInstance(TimeZone.getTimeZone(UTC)));
+            insertTokenPrepStmt.setTimestamp(8, accessTokenDO.getRefreshTokenIssuedTime(), Calendar.getInstance(TimeZone
                     .getTimeZone(UTC)));
-            insertTokenPrepStmt.setLong(8, accessTokenDO.getValidityPeriodInMillis());
-            insertTokenPrepStmt.setLong(9, accessTokenDO.getRefreshTokenValidityPeriodInMillis());
-            insertTokenPrepStmt.setString(10, OAuth2Util.hashScopes(accessTokenDO.getScope()));
-            insertTokenPrepStmt.setString(11, accessTokenDO.getTokenState());
-            insertTokenPrepStmt.setString(12, accessTokenDO.getTokenType());
-            insertTokenPrepStmt.setString(13, accessTokenDO.getTokenId());
-            insertTokenPrepStmt.setString(14, accessTokenDO.getGrantType());
-            insertTokenPrepStmt.setString(15, accessTokenDO.getAuthzUser().getAuthenticatedSubjectIdentifier());
+            insertTokenPrepStmt.setLong(9, accessTokenDO.getValidityPeriodInMillis());
+            insertTokenPrepStmt.setLong(10, accessTokenDO.getRefreshTokenValidityPeriodInMillis());
+            insertTokenPrepStmt.setString(11, OAuth2Util.hashScopes(accessTokenDO.getScope()));
+            insertTokenPrepStmt.setString(12, accessTokenDO.getTokenState());
+            insertTokenPrepStmt.setString(13, accessTokenDO.getTokenType());
+            insertTokenPrepStmt.setString(14, accessTokenDO.getTokenId());
+            insertTokenPrepStmt.setString(15, accessTokenDO.getGrantType());
+            insertTokenPrepStmt.setString(16, accessTokenDO.getAuthzUser().getAuthenticatedSubjectIdentifier());
             insertTokenPrepStmt
-                    .setString(16, getHashingPersistenceProcessor().getProcessedAccessTokenIdentifier(accessTokenHash));
+                    .setString(17, getHashingPersistenceProcessor().getProcessedAccessTokenIdentifier(accessTokenHash));
             if (accessTokenDO.getRefreshToken() != null) {
-                insertTokenPrepStmt.setString(17,
+                insertTokenPrepStmt.setString(18,
                         getHashingPersistenceProcessor().getProcessedRefreshToken(accessTokenDO.getRefreshToken()));
             } else {
-                insertTokenPrepStmt.setString(17, accessTokenDO.getRefreshToken());
+                insertTokenPrepStmt.setString(18, accessTokenDO.getRefreshToken());
             }
             boolean tokenBindingAvailable = isTokenBindingAvailable(accessTokenDO.getTokenBinding());
             if (tokenBindingAvailable) {
-                insertTokenPrepStmt.setString(18, accessTokenDO.getTokenBinding().getBindingReference());
+                insertTokenPrepStmt.setString(19, accessTokenDO.getTokenBinding().getBindingReference());
             } else {
-                insertTokenPrepStmt.setString(18, NONE);
+                insertTokenPrepStmt.setString(19, NONE);
             }
             if (OAuth2ServiceComponentHolder.isIDPIdColumnEnabled()) {
                 if (OAuth2ServiceComponentHolder.isConsentedTokenColumnEnabled()) {
-                    insertTokenPrepStmt.setString(19, Boolean.toString(accessTokenDO.isConsentedToken()));
+                    insertTokenPrepStmt.setString(20, Boolean.toString(accessTokenDO.isConsentedToken()));
+                    insertTokenPrepStmt.setString(21, authenticatedIDP);
+                    insertTokenPrepStmt.setInt(22, tenantId);
+                } else {
                     insertTokenPrepStmt.setString(20, authenticatedIDP);
                     insertTokenPrepStmt.setInt(21, tenantId);
-                    insertTokenPrepStmt.setString(22, getPersistenceProcessor().getProcessedClientId(consumerKey));
-                } else {
-                    insertTokenPrepStmt.setString(19, authenticatedIDP);
-                    insertTokenPrepStmt.setInt(20, tenantId);
-                    insertTokenPrepStmt.setString(21, getPersistenceProcessor().getProcessedClientId(consumerKey));
                 }
             } else {
                 if (OAuth2ServiceComponentHolder.isConsentedTokenColumnEnabled()) {
-                    insertTokenPrepStmt.setString(19, Boolean.toString(accessTokenDO.isConsentedToken()));
-                    insertTokenPrepStmt.setString(20, getPersistenceProcessor().getProcessedClientId(consumerKey));
-                } else {
-                    insertTokenPrepStmt.setString(19, getPersistenceProcessor().getProcessedClientId(consumerKey));
+                    insertTokenPrepStmt.setString(20, Boolean.toString(accessTokenDO.isConsentedToken()));
                 }
             }
             insertTokenPrepStmt.executeUpdate();
@@ -254,7 +250,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
             String accessTokenId = accessTokenDO.getTokenId();
             addScopePrepStmt = connection.prepareStatement(sqlAddScopes);
 
-            if (accessTokenDO.getScope() != null && accessTokenDO.getScope().length > 0) {
+            if (accessTokenDO.getScope() != null) {
                 for (String scope : accessTokenDO.getScope()) {
                     addScopePrepStmt.setString(1, accessTokenId);
                     addScopePrepStmt.setString(2, scope);

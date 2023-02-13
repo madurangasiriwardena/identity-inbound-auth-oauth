@@ -39,7 +39,7 @@ import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
-import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDAOImpl;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth.util.ClaimCache;
@@ -193,7 +193,7 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
             }
         }
 
-        OAuthAppDAO appDAO =  new OAuthAppDAO();
+        OAuthAppDAOImpl appDAO =  new OAuthAppDAOImpl();
         OAuthAppDO appDO;
         try {
             appDO = appDAO.getAppInformation(clientId);

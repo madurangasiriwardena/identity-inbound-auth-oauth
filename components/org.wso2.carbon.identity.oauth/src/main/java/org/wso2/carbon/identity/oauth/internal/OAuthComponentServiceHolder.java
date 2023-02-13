@@ -22,6 +22,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.oauth.OAuthAdminServiceImpl;
 import org.wso2.carbon.identity.oauth.common.token.bindings.TokenBinderInfo;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.dto.TokenBindingMetaDataDTO;
 import org.wso2.carbon.identity.oauth.event.OAuthEventInterceptor;
 import org.wso2.carbon.identity.oauth.listener.OAuthApplicationMgtListener;
@@ -60,6 +61,8 @@ public class OAuthComponentServiceHolder {
     private RoleManagementService roleManagementService;
     private OrganizationUserResidentResolverService organizationUserResidentResolverService;
     private List<AccessTokenResponseHandler> accessTokenResponseHandlers = new ArrayList<>();
+
+    private OAuthAppDAO oAuthAppDAO;
 
 
     /**
@@ -274,5 +277,15 @@ public class OAuthComponentServiceHolder {
     public List<AccessTokenResponseHandler> getAccessTokenResponseHandlers() {
 
         return accessTokenResponseHandlers;
+    }
+
+    public OAuthAppDAO getoAuthAppDAO() {
+
+        return oAuthAppDAO;
+    }
+
+    public void setoAuthAppDAO(OAuthAppDAO oAuthAppDAO) {
+
+        this.oAuthAppDAO = oAuthAppDAO;
     }
 }

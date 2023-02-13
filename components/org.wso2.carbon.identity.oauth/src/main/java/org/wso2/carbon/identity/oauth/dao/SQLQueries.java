@@ -240,11 +240,6 @@ public class SQLQueries {
         public static final String GET_ACCESS_TOKEN_SECRET = "SELECT ACCESS_TOKEN_SECRET FROM " +
                 "IDN_OAUTH1A_ACCESS_TOKEN WHERE ACCESS_TOKEN=?";
 
-        public static final String GET_CONSUMER_KEY_FOR_TOKEN = "SELECT CONSUMER_KEY, SCOPE FROM " +
-                "IDN_OAUTH_CONSUMER_APPS JOIN (SELECT CONSUMER_KEY_ID, SCOPE FROM IDN_OAUTH1A_REQUEST_TOKEN WHERE " +
-                "REQUEST_TOKEN=?) AS REQUEST_TOKEN_TABLE_SELECTED ON IDN_OAUTH_CONSUMER_APPS.ID = " +
-                "REQUEST_TOKEN_TABLE_SELECTED.CONSUMER_KEY_ID";
-
         // Get the username corresponding to the given consumer key and secret
         public static final String GET_USERNAME_FOR_KEY_AND_SECRET = "SELECT USERNAME FROM IDN_OAUTH_CONSUMER_APPS " +
                 "WHERE CONSUMER_KEY=? AND CONSUMER_SECRET=?";

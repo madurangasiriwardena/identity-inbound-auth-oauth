@@ -89,7 +89,7 @@ import static org.wso2.carbon.identity.oauth.Error.DUPLICATE_OAUTH_CLIENT;
         }
 )
 @PowerMockIgnore({"javax.*", "org.w3c.*", "org.xml.*"})
-public class OAuthAppDAOTest extends TestOAuthDAOBase {
+public class OAuthAppDAOImplTest extends TestOAuthDAOBase {
 
     public static final int TENANT_ID = 7777;
     public static final String GRANT_TYPES = "password code";
@@ -175,7 +175,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
      */
     private void addOAuthApplication(OAuthAppDO appDO) {
         try {
-            new OAuthAppDAO().addOAuthApplication(appDO);
+            new OAuthAppDAOImpl().addOAuthApplication(appDO);
             // Check whether our app was added correctly
             assertTrue(isAppAvailable(DB_NAME, APP_NAME, TENANT_ID),
                     "OAuth app was not added successfully to the database.");
@@ -192,7 +192,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         setupMocksForTest();
 
         OAuthAppDO appDO = getDefaultOAuthAppDO();
-        OAuthAppDAO appDAO = new OAuthAppDAO();
+        OAuthAppDAOImpl appDAO = new OAuthAppDAOImpl();
         try (Connection connection = getConnection(DB_NAME)) {
             mockIdentityUtilDataBaseConnection(connection);
             addOAuthApplication(appDO);
@@ -219,7 +219,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
     public void testAddOAuthApplicationWithDuplicateClientId() throws Exception {
         setupMocksForTest();
 
-        OAuthAppDAO appDAO = new OAuthAppDAO();
+        OAuthAppDAOImpl appDAO = new OAuthAppDAOImpl();
 
         try (Connection connection = getConnection(DB_NAME)) {
             mockIdentityUtilDataBaseConnection(connection);
@@ -250,7 +250,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
             Connection connection1 = getExceptionThrowingConnection(connection);
             mockIdentityDataBaseUtilConnection(connection1);
 
-            OAuthAppDAO appDAO = new OAuthAppDAO();
+            OAuthAppDAOImpl appDAO = new OAuthAppDAOImpl();
             appDAO.addOAuthApplication(appDO);
         }
     }
@@ -261,7 +261,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         try (Connection connection = getConnection(DB_NAME)) {
             mockIdentityUtilDataBaseConnection(connection);
 
-            OAuthAppDAO appDAO = new OAuthAppDAO();
+            OAuthAppDAOImpl appDAO = new OAuthAppDAOImpl();
             String[] consumerKeySecretPair = appDAO.addOAuthConsumer(USER_NAME, TENANT_ID, TENANT_DOMAIN);
             assertNotNull(consumerKeySecretPair);
             assertEquals(consumerKeySecretPair.length, 2);
@@ -279,7 +279,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
             Connection exceptionThrowingConnection = getExceptionThrowingConnection(connection);
             mockIdentityDataBaseUtilConnection(exceptionThrowingConnection);
 
-            OAuthAppDAO appDAO = new OAuthAppDAO();
+            OAuthAppDAOImpl appDAO = new OAuthAppDAOImpl();
             appDAO.addOAuthConsumer(USER_NAME, TENANT_ID, TENANT_DOMAIN);
         }
     }
@@ -310,7 +310,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         ) {
             mockIdentityUtilDataBaseConnection(connection);
 
-            OAuthAppDAO appDAO = new OAuthAppDAO();
+            OAuthAppDAOImpl appDAO = new OAuthAppDAOImpl();
             OAuthAppDO appDO = getDefaultOAuthAppDO();
             addOAuthApplication(appDO);
 
@@ -393,7 +393,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
             oAuthAppDO.setCallbackUrl("CHANGED_CALL_BACK");
             oAuthAppDO.setBackChannelLogoutUrl("CHANGED_BACKCHANNEL_LOGOUT");
 
-            OAuthAppDAO appDAO = new OAuthAppDAO();
+            OAuthAppDAOImpl appDAO = new OAuthAppDAOImpl();
             AuthenticatedUser authenticatedUser = new AuthenticatedUser();
             oAuthAppDO.setAppOwner(authenticatedUser);
             oAuthAppDO.getAppOwner().setUserName("testUser");
@@ -409,7 +409,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         try (Connection connection = getConnection(DB_NAME)) {
             mockIdentityUtilDataBaseConnection(connection);
 
-            OAuthAppDAO appDAO = new OAuthAppDAO();
+            OAuthAppDAOImpl appDAO = new OAuthAppDAOImpl();
             appDAO.removeConsumerApplication(CONSUMER_KEY);
 
             // Try to retrieve the deleted app
@@ -430,7 +430,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
             Connection exceptionThrowingConnection = getExceptionThrowingConnection(connection);
             mockIdentityDataBaseUtilConnection(exceptionThrowingConnection);
 
-            OAuthAppDAO appDAO = new OAuthAppDAO();
+            OAuthAppDAOImpl appDAO = new OAuthAppDAOImpl();
             appDAO.removeConsumerApplication(CONSUMER_KEY);
         }
     }
@@ -444,7 +444,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         try (Connection connection = getConnection(DB_NAME)) {
             mockIdentityUtilDataBaseConnection(connection);
 
-            OAuthAppDAO appDAO = new OAuthAppDAO();
+            OAuthAppDAOImpl appDAO = new OAuthAppDAOImpl();
             appDAO.updateOAuthConsumerApp(APP_NAME, CONSUMER_KEY);
 
             PreparedStatement statement = connection.prepareStatement(getAppSql);
@@ -465,7 +465,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
             Connection errorConnection = getExceptionThrowingConnection(connection);
             mockIdentityDataBaseUtilConnection(errorConnection);
 
-            OAuthAppDAO appDAO = new OAuthAppDAO();
+            OAuthAppDAOImpl appDAO = new OAuthAppDAOImpl();
             appDAO.updateOAuthConsumerApp(APP_NAME, CONSUMER_KEY);
         }
     }
@@ -491,7 +491,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
             oAuthAppDO.setState(appState);
             addOAuthApplication(oAuthAppDO);
 
-            OAuthAppDAO appDAO = new OAuthAppDAO();
+            OAuthAppDAOImpl appDAO = new OAuthAppDAOImpl();
 
             // Whatever the state we set for the app during the app creation it will always be ACTIVE
             assertEquals(appDAO.getConsumerAppState(CONSUMER_KEY), OAuthConstants.OauthAppStates.APP_STATE_ACTIVE,
@@ -507,7 +507,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
             Connection exceptionThrowingConnection = getExceptionThrowingConnection(connection);
             mockIdentityDataBaseUtilConnection(exceptionThrowingConnection);
 
-            OAuthAppDAO appDAO = new OAuthAppDAO();
+            OAuthAppDAOImpl appDAO = new OAuthAppDAOImpl();
             appDAO.getConsumerAppState(CONSUMER_KEY);
         }
     }
@@ -524,7 +524,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
             // Add an OAuth app. The app state will be ACTIVE always
             addOAuthApplication(getDefaultOAuthAppDO());
 
-            OAuthAppDAO appDAO = new OAuthAppDAO();
+            OAuthAppDAOImpl appDAO = new OAuthAppDAOImpl();
             // Update the app state to REVOKED
             appDAO.updateConsumerAppState(CONSUMER_KEY, OAuthConstants.OauthAppStates.APP_STATE_REVOKED);
             statement.setString(1, CONSUMER_KEY);
@@ -562,7 +562,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
             anotherAppDO.setOauthConsumerSecret(UUID.randomUUID().toString());
             addOAuthApplication(anotherAppDO);
 
-            OAuthAppDAO appDAO = new OAuthAppDAO();
+            OAuthAppDAOImpl appDAO = new OAuthAppDAOImpl();
             String username = IdentityUtil.addDomainToName(USER_NAME, USER_STORE_DOMAIN);
             OAuthAppDO[] oAuthConsumerAppsOfUser = appDAO.getOAuthConsumerAppsOfUser(username, TENANT_ID);
             assertNotNull(oAuthConsumerAppsOfUser);
@@ -578,7 +578,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
             Connection errorConnection = getExceptionThrowingConnection(connection);
             mockIdentityDataBaseUtilConnection(errorConnection);
 
-            OAuthAppDAO appDAO = new OAuthAppDAO();
+            OAuthAppDAOImpl appDAO = new OAuthAppDAOImpl();
             appDAO.getOAuthConsumerAppsOfUser(USER_NAME, TENANT_ID);
         }
     }
@@ -590,7 +590,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
             mockIdentityUtilDataBaseConnection(connection);
             addOAuthApplication(getDefaultOAuthAppDO());
 
-            OAuthAppDAO appDAO = new OAuthAppDAO();
+            OAuthAppDAOImpl appDAO = new OAuthAppDAOImpl();
             assertNotNull(appDAO.getAppInformation(CONSUMER_KEY));
         }
     }
@@ -612,7 +612,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
 
             addOAuthApplication(defaultOAuthAppDO);
 
-            OAuthAppDAO appDAO = new OAuthAppDAO();
+            OAuthAppDAOImpl appDAO = new OAuthAppDAOImpl();
             OAuthAppDO oAuthAppDO = appDAO.getAppInformation(CONSUMER_KEY);
             assertNotNull(oAuthAppDO);
             assertEquals(oAuthAppDO.isIdTokenEncryptionEnabled(), true);
@@ -633,7 +633,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
             Connection exceptionThrowingConnection = getExceptionThrowingConnection(connection);
             mockIdentityDataBaseUtilConnection(exceptionThrowingConnection);
 
-            OAuthAppDAO appDAO = new OAuthAppDAO();
+            OAuthAppDAOImpl appDAO = new OAuthAppDAOImpl();
             assertNotNull(appDAO.getAppInformation(CONSUMER_KEY));
         }
     }
@@ -648,7 +648,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
             OAuthAppDO oAuthAppDO = getDefaultOAuthAppDO();
             addOAuthApplication(oAuthAppDO);
 
-            OAuthAppDO actualAppDO = new OAuthAppDAO().getAppInformationByAppName(APP_NAME);
+            OAuthAppDO actualAppDO = new OAuthAppDAOImpl().getAppInformationByAppName(APP_NAME);
             assertNotNull(actualAppDO);
             assertEquals(actualAppDO.getApplicationName(), APP_NAME);
             assertEquals(actualAppDO.getOauthConsumerKey(), CONSUMER_KEY);
@@ -669,7 +669,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
             Connection exceptionThrowingConnection = getExceptionThrowingConnection(connection);
             mockIdentityDataBaseUtilConnection(exceptionThrowingConnection);
 
-            OAuthAppDAO appDAO = new OAuthAppDAO();
+            OAuthAppDAOImpl appDAO = new OAuthAppDAOImpl();
             appDAO.getAppInformationByAppName(APP_NAME);
         }
     }

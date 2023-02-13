@@ -641,12 +641,12 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
     private ServiceProvider getServiceProvider(String spTenantDomain,
                                                String clientId) throws IdentityApplicationManagementException {
         ApplicationManagementService applicationMgtService = OAuth2ServiceComponentHolder.getApplicationMgtService();
-        String spName = applicationMgtService.getServiceProviderNameByClientId(clientId, OAUTH2, spTenantDomain);
+        return applicationMgtService.getServiceProviderByClientId(clientId, OAUTH2, spTenantDomain);
 
-        if (log.isDebugEnabled()) {
-            log.debug("Retrieving service provider for clientId: " + clientId + " in tenantDomain: " + spTenantDomain);
-        }
-        return applicationMgtService.getApplicationExcludingFileBasedSPs(spName, spTenantDomain);
+//        if (log.isDebugEnabled()) {
+//           log.debug("Retrieving service provider for clientId: " + clientId + " in tenantDomain: " + spTenantDomain);
+//        }
+//        return applicationMgtService.getApplicationExcludingFileBasedSPs(spName, spTenantDomain);
     }
 
     /**

@@ -33,7 +33,7 @@ import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
-import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDAOImpl;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.tokenprocessor.TokenPersistenceProcessor;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
@@ -119,9 +119,9 @@ public class AuthorizationCodeGrantHandlerTest extends PowerMockTestCase {
         when(OAuthServerConfiguration.getInstance()).thenReturn(oAuthServerConfiguration);
         when(oAuthServerConfiguration.getPersistenceProcessor()).thenReturn(tokenPersistenceProcessor);
 
-        OAuthAppDAO oAuthAppDAO = mock(OAuthAppDAO.class);
+        OAuthAppDAOImpl oAuthAppDAO = mock(OAuthAppDAOImpl.class);
         OAuthAppDO oAuthAppDO = new OAuthAppDO();
-        whenNew(OAuthAppDAO.class).withNoArguments().thenReturn(oAuthAppDAO);
+        whenNew(OAuthAppDAOImpl.class).withNoArguments().thenReturn(oAuthAppDAO);
         when(oAuthAppDAO.getAppInformation(anyString())).thenReturn(oAuthAppDO);
 
         AppInfoCache appInfoCache = mock(AppInfoCache.class);
@@ -190,9 +190,9 @@ public class AuthorizationCodeGrantHandlerTest extends PowerMockTestCase {
         when(OAuthServerConfiguration.getInstance()).thenReturn(oAuthServerConfiguration);
         when(oAuthServerConfiguration.getPersistenceProcessor()).thenReturn(tokenPersistenceProcessor);
 
-        OAuthAppDAO oAuthAppDAO = mock(OAuthAppDAO.class);
+        OAuthAppDAOImpl oAuthAppDAO = mock(OAuthAppDAOImpl.class);
         OAuthAppDO oAuthAppDO = new OAuthAppDO();
-        whenNew(OAuthAppDAO.class).withNoArguments().thenReturn(oAuthAppDAO);
+        whenNew(OAuthAppDAOImpl.class).withNoArguments().thenReturn(oAuthAppDAO);
         when(oAuthAppDAO.getAppInformation(CLIENT_ID_VALUE)).thenReturn(oAuthAppDO);
         when(oAuthAppDAO.getAppInformation(INVALID_CLIENT)).thenThrow(new InvalidOAuthClientException("Error"));
 

@@ -31,7 +31,7 @@ import org.wso2.carbon.identity.common.testng.WithCarbonHome;
 import org.wso2.carbon.identity.common.testng.WithH2Database;
 import org.wso2.carbon.identity.common.testng.WithRealmService;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
-import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDAOImpl;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
@@ -103,7 +103,7 @@ public class RefreshGrantHandlerTest {
     public void testValidateGrant(String clientId)
             throws Exception {
 
-        OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
+        OAuthAppDAOImpl oAuthAppDAO = new OAuthAppDAOImpl();
         oAuthAppDAO.removeConsumerApplication(clientId);
 
         OAuthAppDO oAuthAppDO = new OAuthAppDO();
@@ -167,7 +167,7 @@ public class RefreshGrantHandlerTest {
     public void testIssue(Long userAccessTokenExpiryTime, Long validityPeriod, String renewRefreshToken,
                           String clientId) throws Exception {
 
-        OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
+        OAuthAppDAOImpl oAuthAppDAO = new OAuthAppDAOImpl();
         oAuthAppDAO.removeConsumerApplication(clientId);
         OAuthAppDO oAuthAppDO = new OAuthAppDO();
         oAuthAppDO.setUserAccessTokenExpiryTime(userAccessTokenExpiryTime);

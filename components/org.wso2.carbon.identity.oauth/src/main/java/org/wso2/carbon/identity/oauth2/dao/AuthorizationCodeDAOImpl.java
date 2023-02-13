@@ -96,21 +96,21 @@ public class AuthorizationCodeDAOImpl extends AbstractOAuthDAO implements Author
 
             prepStmt.setString(1, authzCodeDO.getAuthzCodeId());
             prepStmt.setString(2, getPersistenceProcessor().getProcessedAuthzCode(authzCode));
-            prepStmt.setString(3, callbackUrl);
-            prepStmt.setString(4, "");
-            prepStmt.setString(5, authzCodeDO.getAuthorizedUser().getUserName());
-            prepStmt.setString(6, userDomain);
+            prepStmt.setString(3, getPersistenceProcessor().getProcessedClientId(consumerKey));
+            prepStmt.setString(4, callbackUrl);
+            prepStmt.setString(5, "");
+            prepStmt.setString(6, authzCodeDO.getAuthorizedUser().getUserName());
+            prepStmt.setString(7, userDomain);
             int tenantId = OAuth2Util.getTenantId(authzCodeDO.getAuthorizedUser().getTenantDomain());
-            prepStmt.setInt(7, tenantId);
-            prepStmt.setTimestamp(8, authzCodeDO.getIssuedTime(),
+            prepStmt.setInt(8, tenantId);
+            prepStmt.setTimestamp(9, authzCodeDO.getIssuedTime(),
                     Calendar.getInstance(TimeZone.getTimeZone(UTC)));
-            prepStmt.setLong(9, authzCodeDO.getValidityPeriod());
-            prepStmt.setString(10, authzCodeDO.getAuthorizedUser().getAuthenticatedSubjectIdentifier());
-            prepStmt.setString(11, authzCodeDO.getPkceCodeChallenge());
-            prepStmt.setString(12, authzCodeDO.getPkceCodeChallengeMethod());
+            prepStmt.setLong(10, authzCodeDO.getValidityPeriod());
+            prepStmt.setString(11, authzCodeDO.getAuthorizedUser().getAuthenticatedSubjectIdentifier());
+            prepStmt.setString(12, authzCodeDO.getPkceCodeChallenge());
+            prepStmt.setString(13, authzCodeDO.getPkceCodeChallengeMethod());
             //insert the hash value of the authorization code
-            prepStmt.setString(13, getHashingPersistenceProcessor().getProcessedAuthzCode(authzCode));
-            prepStmt.setString(14, getPersistenceProcessor().getProcessedClientId(consumerKey));
+            prepStmt.setString(14, getHashingPersistenceProcessor().getProcessedAuthzCode(authzCode));
             if (OAuth2ServiceComponentHolder.isIDPIdColumnEnabled()) {
                 prepStmt.setString(15, authenticatedIDP);
                 prepStmt.setInt(16, tenantId);

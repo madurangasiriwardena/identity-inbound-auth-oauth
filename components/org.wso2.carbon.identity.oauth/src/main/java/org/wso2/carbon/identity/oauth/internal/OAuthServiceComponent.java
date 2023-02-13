@@ -34,6 +34,7 @@ import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.common.token.bindings.TokenBinderInfo;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
+import org.wso2.carbon.identity.oauth.dao.DPOAuthAppDAOImpl;
 import org.wso2.carbon.identity.oauth.event.OAuthEventInterceptor;
 import org.wso2.carbon.identity.oauth.listener.IdentityOathEventListener;
 import org.wso2.carbon.identity.oauth.listener.IdentityOauthEventHandler;
@@ -99,6 +100,8 @@ public class OAuthServiceComponent {
             context.getBundleContext().registerService(OAuthAdminServiceImpl.class.getName(), oauthAdminService, null);
             // Note : DO NOT add any activation related code below this point,
             // to make sure the server doesn't start up if any activation failures occur
+
+            OAuthComponentServiceHolder.getInstance().setoAuthAppDAO(new DPOAuthAppDAOImpl());
 
             if (log.isDebugEnabled()) {
                 log.debug("Identity OAuth bundle is activated");

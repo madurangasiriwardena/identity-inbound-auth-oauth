@@ -29,7 +29,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.core.common.AuthenticationException;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
-import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDAOImpl;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAO;
 import org.wso2.carbon.identity.oauth.dto.OAuthConsumerDTO;
@@ -270,7 +270,7 @@ public class OAuthService {
         OAuthConsumerDAO consumerDAO = new OAuthConsumerDAO();
         Parameters params = consumerDAO.getRequestToken(oauthToken);
 
-        OAuthAppDAO appDAO = new OAuthAppDAO();
+        OAuthAppDAOImpl appDAO = new OAuthAppDAOImpl();
         OAuthAppDO oauthAppDO = appDAO.getAppInformation(params.getOauthConsumerKey());
 
         Parameters resp = new Parameters();

@@ -38,7 +38,7 @@ import org.wso2.carbon.identity.oauth.common.OAuth2ErrorCodes;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
-import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDAOImpl;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.event.OAuthEventInterceptor;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
@@ -130,7 +130,7 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
     private OAuth2AuthorizeRespDTO mockedOAuth2AuthorizeRespDTO;
 
     @Mock
-    private OAuthAppDAO oAuthAppDAO;
+    private OAuthAppDAOImpl oAuthAppDAO;
 
     @Mock
     private AuthenticatedUser authenticatedUser;
@@ -319,7 +319,7 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
     private OAuthAppDO getOAuthAppDO(String clientId, String grantType, String callbackUrl, String tenantDomain)
             throws Exception {
 
-        whenNew(OAuthAppDAO.class).withNoArguments().thenReturn(oAuthAppDAO);
+        whenNew(OAuthAppDAOImpl.class).withNoArguments().thenReturn(oAuthAppDAO);
         OAuthAppDO oAuthAppDO = new OAuthAppDO();
         oAuthAppDO.setGrantTypes(grantType);
         oAuthAppDO.setApplicationName("dummyName");
@@ -336,7 +336,7 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
     @Test
     public void testValidateClientInfoWithInvalidClientId() throws Exception {
 
-        whenNew(OAuthAppDAO.class).withNoArguments().thenReturn(oAuthAppDAO);
+        whenNew(OAuthAppDAOImpl.class).withNoArguments().thenReturn(oAuthAppDAO);
         mockStatic(IdentityTenantUtil.class);
         when(IdentityTenantUtil.getTenantId(anyString())).thenReturn(-1234);
         when(oAuthAppDAO.getAppInformation(null)).thenReturn(null);
@@ -380,7 +380,7 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
     public void testInvalidOAuthClientException() throws Exception {
 
         String callbackUrI = "dummyCallBackURI";
-        whenNew(OAuthAppDAO.class).withNoArguments().thenReturn(oAuthAppDAO);
+        whenNew(OAuthAppDAOImpl.class).withNoArguments().thenReturn(oAuthAppDAO);
         when(oAuthAppDAO.getAppInformation(clientId)).thenThrow
                 (new InvalidOAuthClientException("Cannot find an application associated with the given consumer key"));
         mockStatic(IdentityTenantUtil.class);
@@ -400,7 +400,7 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
     public void testIdentityOAuth2Exception() throws Exception {
 
         String callbackUrI = "dummyCallBackURI";
-        whenNew(OAuthAppDAO.class).withNoArguments().thenReturn(oAuthAppDAO);
+        whenNew(OAuthAppDAOImpl.class).withNoArguments().thenReturn(oAuthAppDAO);
         when(oAuthAppDAO.getAppInformation(clientId)).thenThrow
                 (new IdentityOAuth2Exception("Error while retrieving the app information"));
         mockStatic(IdentityTenantUtil.class);
@@ -763,7 +763,7 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
         String id = "clientId1";
         OAuthAppDO oAuthAppDO = new OAuthAppDO();
         oAuthAppDO.setState("ACTIVE");
-        whenNew(OAuthAppDAO.class).withNoArguments().thenReturn(oAuthAppDAO);
+        whenNew(OAuthAppDAOImpl.class).withNoArguments().thenReturn(oAuthAppDAO);
         when(oAuthAppDAO.getAppInformation(id)).thenReturn(oAuthAppDO);
         mockStatic(IdentityTenantUtil.class);
         when(IdentityTenantUtil.getTenantId(anyString())).thenReturn(1);
@@ -776,7 +776,7 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
 
         mockStatic(IdentityTenantUtil.class);
         when(IdentityTenantUtil.getTenantId(anyString())).thenReturn(1);
-        whenNew(OAuthAppDAO.class).withNoArguments().thenThrow(IdentityOAuth2Exception.class);
+        whenNew(OAuthAppDAOImpl.class).withNoArguments().thenThrow(IdentityOAuth2Exception.class);
         assertNull(oAuth2Service.getOauthApplicationState(clientId));
     }
 
@@ -786,7 +786,7 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
         mockStatic(IdentityTenantUtil.class);
         when(IdentityTenantUtil.getTenantId(anyString())).thenReturn(1);
 
-        whenNew(OAuthAppDAO.class).withNoArguments().thenThrow(InvalidOAuthClientException.class);
+        whenNew(OAuthAppDAOImpl.class).withNoArguments().thenThrow(InvalidOAuthClientException.class);
         assertNull(oAuth2Service.getOauthApplicationState(clientId));
     }
 

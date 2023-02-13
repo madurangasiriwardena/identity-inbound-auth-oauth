@@ -32,7 +32,7 @@ import org.wso2.carbon.identity.common.testng.WithKeyStore;
 import org.wso2.carbon.identity.common.testng.WithRealmService;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
-import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDAOImpl;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth.util.ClaimCache;
@@ -228,7 +228,7 @@ public class JWTTokenGeneratorTest extends PowerMockIdentityBaseTest {
         oAuthAppDO.setApplicationName("testApp" + new Random(4));
         oAuthAppDO.setOauthVersion("2.0");
 
-        OAuthAppDAO authAppDAO = new OAuthAppDAO();
+        OAuthAppDAOImpl authAppDAO = new OAuthAppDAOImpl();
         authAppDAO.addOAuthConsumer("testUser", -1234, "PRIMARY");
         authAppDAO.addOAuthApplication(oAuthAppDO);
         authAppDAO.getConsumerAppState("sampleConsumerKey");

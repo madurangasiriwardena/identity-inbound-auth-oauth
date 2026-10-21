@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.identity.oauth2.util;
 
+import java.security.AlgorithmParameters;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.InvalidParameterException;
@@ -27,19 +28,29 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.Provider;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.SignatureSpi;
 import java.security.spec.AlgorithmParameterSpec;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.CipherSpi;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.ShortBufferException;
+
 /**
  * Test JCA provider that simulates an HSM. The RSA private key stays inside the provider. Callers only get an
  * opaque {@link PrivateKey} handle that does not implement {@link java.security.interfaces.RSAPrivateKey} and has no
- * encoding, like a sensitive SunPKCS11 key. Only this provider can sign with the handle.
+ * encoding, like a sensitive SunPKCS11 key. Only this provider can sign or decrypt with the handle. Like SunPKCS11, it
+ * offers only the PKCS#1 v1.5 RSA cipher (no OAEP).
  */
 public class OpaqueRSAKeyTestProvider extends Provider {
 
     private static final long serialVersionUID = 1L;
+    private static final String RSA_PKCS1_CIPHER = "RSA/ECB/PKCS1Padding";
     private static final String[] SIGNATURE_ALGORITHMS =
             {"SHA256withRSA", "SHA384withRSA", "SHA512withRSA", "RSASSA-PSS"};
 
@@ -55,6 +66,13 @@ public class OpaqueRSAKeyTestProvider extends Provider {
         for (String algorithm : SIGNATURE_ALGORITHMS) {
             putService(new SignatureService(this, algorithm));
         }
+        putService(new Service(this, "Cipher", RSA_PKCS1_CIPHER, OpaqueKeyCipherSpi.class.getName(), null, null) {
+            @Override
+            public Object newInstance(Object constructorParameter) {
+
+                return new OpaqueKeyCipherSpi((OpaqueRSAKeyTestProvider) getProvider());
+            }
+        });
     }
 
     /**
@@ -110,6 +128,116 @@ public class OpaqueRSAKeyTestProvider extends Provider {
         public Object newInstance(Object constructorParameter) {
 
             return new OpaqueKeySignatureSpi((OpaqueRSAKeyTestProvider) getProvider(), getAlgorithm());
+        }
+    }
+
+    /**
+     * PKCS#1 v1.5 RSA cipher SPI that accepts only the provider's own handle for decryption.
+     */
+    private static final class OpaqueKeyCipherSpi extends CipherSpi {
+
+        private final OpaqueRSAKeyTestProvider provider;
+        private Cipher delegate;
+
+        OpaqueKeyCipherSpi(OpaqueRSAKeyTestProvider provider) {
+
+            this.provider = provider;
+        }
+
+        private void init(int opmode, java.security.Key key, SecureRandom random) throws InvalidKeyException {
+
+            if (key != provider.handle) {
+                throw new InvalidKeyException("Only keys held by this provider are supported.");
+            }
+            try {
+                delegate = Cipher.getInstance(RSA_PKCS1_CIPHER, "SunJCE");
+                delegate.init(opmode, provider.keyPair.getPrivate(), random);
+            } catch (Exception e) {
+                throw new InvalidKeyException("Error while initializing the delegate cipher.", e);
+            }
+        }
+
+        @Override
+        protected void engineSetMode(String mode) throws java.security.NoSuchAlgorithmException {
+
+            // Fixed transformation.
+        }
+
+        @Override
+        protected void engineSetPadding(String padding) throws NoSuchPaddingException {
+
+            // Fixed transformation.
+        }
+
+        @Override
+        protected int engineGetBlockSize() {
+
+            return 0;
+        }
+
+        @Override
+        protected int engineGetOutputSize(int inputLen) {
+
+            return delegate.getOutputSize(inputLen);
+        }
+
+        @Override
+        protected byte[] engineGetIV() {
+
+            return null;
+        }
+
+        @Override
+        protected AlgorithmParameters engineGetParameters() {
+
+            return null;
+        }
+
+        @Override
+        protected void engineInit(int opmode, java.security.Key key, SecureRandom random) throws InvalidKeyException {
+
+            init(opmode, key, random);
+        }
+
+        @Override
+        protected void engineInit(int opmode, java.security.Key key, AlgorithmParameterSpec params,
+                                  SecureRandom random) throws InvalidKeyException {
+
+            init(opmode, key, random);
+        }
+
+        @Override
+        protected void engineInit(int opmode, java.security.Key key, AlgorithmParameters params, SecureRandom random)
+                throws InvalidKeyException {
+
+            init(opmode, key, random);
+        }
+
+        @Override
+        protected byte[] engineUpdate(byte[] input, int inputOffset, int inputLen) {
+
+            return delegate.update(input, inputOffset, inputLen);
+        }
+
+        @Override
+        protected int engineUpdate(byte[] input, int inputOffset, int inputLen, byte[] output, int outputOffset)
+                throws ShortBufferException {
+
+            return delegate.update(input, inputOffset, inputLen, output, outputOffset);
+        }
+
+        @Override
+        protected byte[] engineDoFinal(byte[] input, int inputOffset, int inputLen)
+                throws IllegalBlockSizeException, BadPaddingException {
+
+            return delegate.doFinal(input, inputOffset, inputLen);
+        }
+
+        @Override
+        protected int engineDoFinal(byte[] input, int inputOffset, int inputLen, byte[] output, int outputOffset)
+                throws ShortBufferException, IllegalBlockSizeException, BadPaddingException {
+
+            return delegate.doFinal(input, inputOffset, inputLen, output, outputOffset);
         }
     }
 

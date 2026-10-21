@@ -31,6 +31,7 @@ import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.Payload;
 import com.nimbusds.jose.crypto.ECDHEncrypter;
+import com.nimbusds.jose.crypto.RSADecrypter;
 import com.nimbusds.jose.crypto.RSAEncrypter;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
@@ -3731,6 +3732,34 @@ public class OAuth2Util {
             }
         }
         return signer;
+    }
+
+    /**
+     * Create an RSA JWE decrypter for a private key of the server.
+     * <p>
+     * For a private key whose key material is not accessible (for example a key held in an HSM through the
+     * SunPKCS11 provider), the key decryption is bound to the given provider, because default JCA provider selection
+     * can pick a provider that cannot use the key. Content decryption keeps the default providers. Software keys are
+     * handled exactly as by {@code new RSADecrypter(privateKey)}.
+     * <p>
+     * Note: the SunPKCS11 provider supports only the PKCS#1 v1.5 ({@code RSA1_5}) RSA cipher, not OAEP.
+     *
+     * @param privateKey RSA private key.
+     * @param provider   JCA provider of the key store that holds the key. Used only when the key material is not
+     *                   accessible. Can be null.
+     * @return RSA decrypter.
+     */
+    public static RSADecrypter createRSADecrypter(PrivateKey privateKey, Provider provider) {
+
+        RSADecrypter decrypter = new RSADecrypter(privateKey);
+        if (provider != null && isKeyMaterialInaccessible(privateKey)) {
+            decrypter.getJCAContext().setKeyEncryptionProvider(provider);
+            if (log.isDebugEnabled()) {
+                log.debug("Decryption key material is not accessible. Using the key store provider: " +
+                        provider.getName() + " for the key decryption.");
+            }
+        }
+        return decrypter;
     }
 
     /**

@@ -22,6 +22,7 @@ import java.security.AlgorithmParameters;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.InvalidParameterException;
+import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -33,6 +34,8 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.security.SignatureSpi;
 import java.security.spec.AlgorithmParameterSpec;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -44,13 +47,15 @@ import javax.crypto.ShortBufferException;
 /**
  * Test JCA provider that simulates an HSM. The RSA private key stays inside the provider. Callers only get an
  * opaque {@link PrivateKey} handle that does not implement {@link java.security.interfaces.RSAPrivateKey} and has no
- * encoding, like a sensitive SunPKCS11 key. Only this provider can sign or decrypt with the handle. Like SunPKCS11, it
- * offers only the PKCS#1 v1.5 RSA cipher (no OAEP).
+ * encoding, like a sensitive SunPKCS11 key. Only this provider can sign or decrypt with the handle, and its services
+ * accept only that handle, so JCA selects the provider for the handle when no provider is named.
+ * <p>
+ * Like SunPKCS11, it offers only the PKCS#1 v1.5 RSA cipher. With {@code withOAEP}, it also offers OAEP, like
+ * SunPKCS11 together with the server's PKCS11 OAEP provider.
  */
 public class OpaqueRSAKeyTestProvider extends Provider {
 
     private static final long serialVersionUID = 1L;
-    private static final String RSA_PKCS1_CIPHER = "RSA/ECB/PKCS1Padding";
     private static final String[] SIGNATURE_ALGORITHMS =
             {"SHA256withRSA", "SHA384withRSA", "SHA512withRSA", "RSASSA-PSS"};
 
@@ -59,20 +64,27 @@ public class OpaqueRSAKeyTestProvider extends Provider {
 
     public OpaqueRSAKeyTestProvider(int keySize) throws NoSuchAlgorithmException {
 
+        this(keySize, false);
+    }
+
+    /**
+     * @param keySize  RSA key size.
+     * @param withOAEP Whether the RSA cipher also supports OAEP padding.
+     */
+    public OpaqueRSAKeyTestProvider(int keySize, boolean withOAEP) throws NoSuchAlgorithmException {
+
         super("OpaqueRSATest", "1.0", "Test provider that keeps RSA private keys inside the provider");
         KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
         generator.initialize(keySize);
         keyPair = generator.generateKeyPair();
         for (String algorithm : SIGNATURE_ALGORITHMS) {
-            putService(new SignatureService(this, algorithm));
+            putService(new HandleService(this, "Signature", algorithm, OpaqueKeySignatureSpi.class.getName(), null));
         }
-        putService(new Service(this, "Cipher", RSA_PKCS1_CIPHER, OpaqueKeyCipherSpi.class.getName(), null, null) {
-            @Override
-            public Object newInstance(Object constructorParameter) {
-
-                return new OpaqueKeyCipherSpi((OpaqueRSAKeyTestProvider) getProvider());
-            }
-        });
+        Map<String, String> cipherAttributes = new HashMap<>();
+        cipherAttributes.put("SupportedModes", "ECB|NONE");
+        cipherAttributes.put("SupportedPaddings", withOAEP ? "PKCS1PADDING|OAEPPADDING|OAEPWITH.*ANDMGF1PADDING"
+                : "PKCS1PADDING");
+        putService(new HandleService(this, "Cipher", "RSA", OpaqueKeyCipherSpi.class.getName(), cipherAttributes));
     }
 
     /**
@@ -117,26 +129,42 @@ public class OpaqueRSAKeyTestProvider extends Provider {
         }
     }
 
-    private static final class SignatureService extends Service {
+    /**
+     * Service that accepts only the provider's own key handle, as SunPKCS11 accepts only its own keys.
+     */
+    private static final class HandleService extends Service {
 
-        SignatureService(OpaqueRSAKeyTestProvider provider, String algorithm) {
+        HandleService(OpaqueRSAKeyTestProvider provider, String type, String algorithm, String className,
+                      Map<String, String> attributes) {
 
-            super(provider, "Signature", algorithm, OpaqueKeySignatureSpi.class.getName(), null, null);
+            super(provider, type, algorithm, className, null, attributes);
+        }
+
+        @Override
+        public boolean supportsParameter(Object parameter) {
+
+            return parameter == ((OpaqueRSAKeyTestProvider) getProvider()).handle;
         }
 
         @Override
         public Object newInstance(Object constructorParameter) {
 
-            return new OpaqueKeySignatureSpi((OpaqueRSAKeyTestProvider) getProvider(), getAlgorithm());
+            OpaqueRSAKeyTestProvider provider = (OpaqueRSAKeyTestProvider) getProvider();
+            if ("Cipher".equals(getType())) {
+                return new OpaqueKeyCipherSpi(provider);
+            }
+            return new OpaqueKeySignatureSpi(provider, getAlgorithm());
         }
     }
 
     /**
-     * PKCS#1 v1.5 RSA cipher SPI that accepts only the provider's own handle for decryption.
+     * RSA cipher SPI that accepts only the provider's own handle and decrypts or unwraps with the key held inside the
+     * provider. The padding is the one requested in the transformation.
      */
     private static final class OpaqueKeyCipherSpi extends CipherSpi {
 
         private final OpaqueRSAKeyTestProvider provider;
+        private String padding = "PKCS1Padding";
         private Cipher delegate;
 
         OpaqueKeyCipherSpi(OpaqueRSAKeyTestProvider provider) {
@@ -144,29 +172,36 @@ public class OpaqueRSAKeyTestProvider extends Provider {
             this.provider = provider;
         }
 
-        private void init(int opmode, java.security.Key key, SecureRandom random) throws InvalidKeyException {
+        private void init(int opmode, Key key, Object params, SecureRandom random) throws InvalidKeyException,
+                InvalidAlgorithmParameterException {
 
             if (key != provider.handle) {
                 throw new InvalidKeyException("Only keys held by this provider are supported.");
             }
             try {
-                delegate = Cipher.getInstance(RSA_PKCS1_CIPHER, "SunJCE");
-                delegate.init(opmode, provider.keyPair.getPrivate(), random);
+                delegate = Cipher.getInstance("RSA/ECB/" + padding, "SunJCE");
             } catch (Exception e) {
-                throw new InvalidKeyException("Error while initializing the delegate cipher.", e);
+                throw new InvalidKeyException("Error while creating the delegate cipher.", e);
+            }
+            if (params instanceof AlgorithmParameterSpec) {
+                delegate.init(opmode, provider.keyPair.getPrivate(), (AlgorithmParameterSpec) params, random);
+            } else if (params instanceof AlgorithmParameters) {
+                delegate.init(opmode, provider.keyPair.getPrivate(), (AlgorithmParameters) params, random);
+            } else {
+                delegate.init(opmode, provider.keyPair.getPrivate(), random);
             }
         }
 
         @Override
-        protected void engineSetMode(String mode) throws java.security.NoSuchAlgorithmException {
+        protected void engineSetMode(String mode) throws NoSuchAlgorithmException {
 
-            // Fixed transformation.
+            // ECB or NONE, checked by the service attributes.
         }
 
         @Override
         protected void engineSetPadding(String padding) throws NoSuchPaddingException {
 
-            // Fixed transformation.
+            this.padding = padding;
         }
 
         @Override
@@ -190,27 +225,31 @@ public class OpaqueRSAKeyTestProvider extends Provider {
         @Override
         protected AlgorithmParameters engineGetParameters() {
 
-            return null;
+            return delegate == null ? null : delegate.getParameters();
         }
 
         @Override
-        protected void engineInit(int opmode, java.security.Key key, SecureRandom random) throws InvalidKeyException {
+        protected void engineInit(int opmode, Key key, SecureRandom random) throws InvalidKeyException {
 
-            init(opmode, key, random);
+            try {
+                init(opmode, key, null, random);
+            } catch (InvalidAlgorithmParameterException e) {
+                throw new InvalidKeyException(e);
+            }
         }
 
         @Override
-        protected void engineInit(int opmode, java.security.Key key, AlgorithmParameterSpec params,
-                                  SecureRandom random) throws InvalidKeyException {
+        protected void engineInit(int opmode, Key key, AlgorithmParameterSpec params, SecureRandom random)
+                throws InvalidKeyException, InvalidAlgorithmParameterException {
 
-            init(opmode, key, random);
+            init(opmode, key, params, random);
         }
 
         @Override
-        protected void engineInit(int opmode, java.security.Key key, AlgorithmParameters params, SecureRandom random)
-                throws InvalidKeyException {
+        protected void engineInit(int opmode, Key key, AlgorithmParameters params, SecureRandom random)
+                throws InvalidKeyException, InvalidAlgorithmParameterException {
 
-            init(opmode, key, random);
+            init(opmode, key, params, random);
         }
 
         @Override
@@ -238,6 +277,13 @@ public class OpaqueRSAKeyTestProvider extends Provider {
                 throws ShortBufferException, IllegalBlockSizeException, BadPaddingException {
 
             return delegate.doFinal(input, inputOffset, inputLen, output, outputOffset);
+        }
+
+        @Override
+        protected Key engineUnwrap(byte[] wrappedKey, String wrappedKeyAlgorithm, int wrappedKeyType)
+                throws InvalidKeyException, NoSuchAlgorithmException {
+
+            return delegate.unwrap(wrappedKey, wrappedKeyAlgorithm, wrappedKeyType);
         }
     }
 

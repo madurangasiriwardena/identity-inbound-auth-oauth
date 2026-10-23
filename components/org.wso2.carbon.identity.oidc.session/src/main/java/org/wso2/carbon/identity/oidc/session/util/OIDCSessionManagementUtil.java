@@ -455,8 +455,7 @@ public class OIDCSessionManagementUtil {
             }
             PrivateKey privateKey = (PrivateKey) key;
             EncryptedJWT encryptedJWT = EncryptedJWT.parse(idToken);
-            RSADecrypter decrypter = OAuth2Util.createRSADecrypter(privateKey,
-                    OAuth2Util.getSigningKeyStoreProvider(tenantDomain, privateKey));
+            RSADecrypter decrypter = OAuth2Util.createRSADecrypter(privateKey);
             encryptedJWT.decrypt(decrypter);
             return encryptedJWT;
         } catch (ParseException | JOSEException e) {

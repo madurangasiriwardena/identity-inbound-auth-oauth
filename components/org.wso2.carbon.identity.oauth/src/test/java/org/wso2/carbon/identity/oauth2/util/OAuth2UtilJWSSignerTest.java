@@ -48,6 +48,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.PrivateKey;
+import java.security.Security;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
 
@@ -251,33 +252,53 @@ public class OAuth2UtilJWSSignerTest {
     @Test
     public void testCreateRSADecrypterWithSoftwareKey() throws Exception {
 
-        RSADecrypter decrypter = OAuth2Util.createRSADecrypter(softwareKeyPair.getPrivate(), hsmProvider);
+        RSADecrypter decrypter = OAuth2Util.createRSADecrypter(softwareKeyPair.getPrivate());
 
-        // Software keys keep the default provider selection.
         assertNull(decrypter.getJCAContext().getKeyEncryptionProvider());
         assertEquals(decryptJWE(encryptJWE(JWEAlgorithm.RSA_OAEP_256, (RSAPublicKey) softwareKeyPair.getPublic()),
                 decrypter), "secret");
     }
 
-    @Test
-    public void testCreateRSADecrypterWithOpaqueKey() throws Exception {
+    @DataProvider(name = "jweAlgorithms")
+    public Object[][] jweAlgorithms() {
 
-        RSADecrypter decrypter = OAuth2Util.createRSADecrypter(hsmProvider.getPrivateKey(), hsmProvider);
+        return new Object[][]{{JWEAlgorithm.RSA1_5}, {JWEAlgorithm.RSA_OAEP}, {JWEAlgorithm.RSA_OAEP_256},
+                {JWEAlgorithm.RSA_OAEP_512}};
+    }
 
-        // Only the key decryption is bound to the key store provider; content decryption keeps the defaults.
-        assertSame(decrypter.getJCAContext().getKeyEncryptionProvider(), hsmProvider);
-        assertNull(decrypter.getJCAContext().getContentEncryptionProvider());
-        assertEquals(decryptJWE(encryptJWE(JWEAlgorithm.RSA1_5, (RSAPublicKey) hsmProvider.getPublicKey()),
-                decrypter), "secret");
+    @Test(dataProvider = "jweAlgorithms")
+    public void testCreateRSADecrypterWithOpaqueKey(JWEAlgorithm algorithm) throws Exception {
+
+        // Like SunPKCS11 together with the server's PKCS11 OAEP provider, registered after the JDK providers.
+        OpaqueRSAKeyTestProvider token = new OpaqueRSAKeyTestProvider(2048, true);
+        Security.addProvider(token);
+        try {
+            RSADecrypter decrypter = OAuth2Util.createRSADecrypter(token.getPrivateKey());
+
+            // No provider is named: JCA selects the provider that accepts the key.
+            assertNull(decrypter.getJCAContext().getKeyEncryptionProvider());
+            assertEquals(decryptJWE(encryptJWE(algorithm, (RSAPublicKey) token.getPublicKey()), decrypter),
+                    "secret");
+        } finally {
+            Security.removeProvider(token.getName());
+        }
     }
 
     @Test
     public void testOpaqueKeyRSAOAEPNeedsProviderSupport() throws Exception {
 
-        // Like SunPKCS11, the provider has no OAEP RSA cipher, so RSA-OAEP JWEs cannot be decrypted with the key.
-        RSADecrypter decrypter = OAuth2Util.createRSADecrypter(hsmProvider.getPrivateKey(), hsmProvider);
-        String jwe = encryptJWE(JWEAlgorithm.RSA_OAEP_256, (RSAPublicKey) hsmProvider.getPublicKey());
-        expectThrows(JOSEException.class, () -> decryptJWE(jwe, decrypter));
+        // SunPKCS11 alone: PKCS#1 v1.5 only, so RSA-OAEP JWEs cannot be decrypted with the key.
+        OpaqueRSAKeyTestProvider token = new OpaqueRSAKeyTestProvider(2048, false);
+        Security.addProvider(token);
+        try {
+            RSADecrypter decrypter = OAuth2Util.createRSADecrypter(token.getPrivateKey());
+            String jwe = encryptJWE(JWEAlgorithm.RSA_OAEP_256, (RSAPublicKey) token.getPublicKey());
+            expectThrows(JOSEException.class, () -> decryptJWE(jwe, decrypter));
+            assertEquals(decryptJWE(encryptJWE(JWEAlgorithm.RSA1_5, (RSAPublicKey) token.getPublicKey()),
+                    decrypter), "secret");
+        } finally {
+            Security.removeProvider(token.getName());
+        }
     }
 
     private static String encryptJWE(JWEAlgorithm algorithm, RSAPublicKey publicKey) throws JOSEException {

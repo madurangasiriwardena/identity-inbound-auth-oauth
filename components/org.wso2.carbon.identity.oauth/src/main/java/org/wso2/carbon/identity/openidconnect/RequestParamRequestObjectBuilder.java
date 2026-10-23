@@ -48,7 +48,6 @@ import org.wso2.carbon.utils.DiagnosticLog;
 
 import java.security.Key;
 import java.security.PrivateKey;
-import java.security.Provider;
 import java.security.interfaces.RSAPrivateKey;
 import java.text.ParseException;
 
@@ -131,10 +130,10 @@ public class RequestParamRequestObjectBuilder implements RequestObjectBuilder {
                 applicationRequestObjectEncryptionAlgorithm = encryptedJWT.getHeader().getAlgorithm().getName();
             }
             JWEAlgorithm encryptionAlgorithm = JWEAlgorithm.parse(applicationRequestObjectEncryptionAlgorithm);
-            String decryptionTenantDomain = getTenantDomainForDecryption(oAuth2Parameters);
+            // The key can be held in an HSM; JCA selects the provider that accepts it (see
+            // OAuth2Util#createRSADecrypter).
             PrivateKey privateKey = getPrivateKey(oAuth2Parameters);
-            JWEDecrypter decrypter = validateDecryptorMode(encryptionAlgorithm, privateKey,
-                    OAuth2Util.getSigningKeyStoreProvider(decryptionTenantDomain, privateKey));
+            JWEDecrypter decrypter = validateDecryptorMode(encryptionAlgorithm, privateKey);
             encryptedJWT.decrypt(decrypter);
 
             JWEObject jweObject = JWEObject.parse(requestObject);
@@ -177,24 +176,16 @@ public class RequestParamRequestObjectBuilder implements RequestObjectBuilder {
      *
      * @param encryptionAlgorithm SP configured Encryption Algorithm
      * @param privateKey          Private key
-     * @param provider            JCA provider of the key store that holds the private key. Used for keys whose key
-     *                            material is not accessible (HSM keys). Can be null.
      * @return Decrypter          decryptor type
      * @throws JOSEException      Jose exception while creating decryptor
      */
-    private JWEDecrypter validateDecryptorMode(JWEAlgorithm encryptionAlgorithm, PrivateKey privateKey,
-                                               Provider provider) throws JOSEException {
+    private JWEDecrypter validateDecryptorMode(JWEAlgorithm encryptionAlgorithm, PrivateKey privateKey)
+            throws JOSEException {
 
         if (encryptionAlgorithm == null) {
             log.debug("Request Object Encryption Algorithm is not found.");
         }
-        RSADecrypter decrypter = new RSADecrypter(privateKey);
-        if (provider != null) {
-            // The key material is not accessible (HSM key): decrypt the content encryption key with the key store
-            // provider. Content decryption keeps the default providers.
-            decrypter.getJCAContext().setKeyEncryptionProvider(provider);
-        }
-        return decrypter;
+        return new RSADecrypter(privateKey);
     }
 
     /**
